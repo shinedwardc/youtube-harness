@@ -1,4 +1,4 @@
-"""POST /videos and GET /jobs, with the worker driven by hand."""
+"""POST /videos, GET /jobs and the web page, with the worker driven by hand."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -130,6 +130,15 @@ def test_a_cached_reply_has_the_title_and_obsidian_link_too(client):
 
     assert body["title"] == "How Raft Works"
     assert body["note_url"].startswith("obsidian://open?vault=My%20Vault&file=youtube%2F")
+
+
+def test_the_page_is_served_at_the_root(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.headers["cache-control"] == "no-cache"
+    assert "<title>Video notes</title>" in response.text
 
 
 def test_vault_name_defaults_to_the_vault_folder():

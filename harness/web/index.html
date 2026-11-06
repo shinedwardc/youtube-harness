@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Video notes</title>
+<meta name="theme-color" content="#fbd9d3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Video notes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23dc2f35'/%3E%3Cpath d='M12 9.5v13a1 1 0 0 0 1.5.87l11-6.5a1 1 0 0 0 0-1.74l-11-6.5A1 1 0 0 0 12 9.5z' fill='%23fff5f3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Nanum Gothic carries Korean titles; the browser only downloads it when a page has Hangul. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Nanum+Gothic:wght@400;700&display=swap">
+<style>
+  :root {
+    --ground: #fbd9d3;
+    --surface: #fff5f3;
+    --action: #dc2f35;
+    --action-deep: #b81f25;
+    --brand: #c8242a;
+    --ink: #3a1417;
+    --soft: #7b4044;
+    --line: #f0b4ab;
+    --font: "Bricolage Grotesque", "Nanum Gothic", system-ui, sans-serif;
+    --gutter: clamp(1rem, 3.35vw, 3rem);
+    --out: cubic-bezier(0.16, 1, 0.3, 1);
+    color-scheme: light;
+    scrollbar-color: #e08f86 var(--ground);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: clip;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 1rem/1.45 var(--font);
+    caret-color: var(--action);
+  }
+
+  a { color: inherit; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+
+  :focus-visible { outline: 2px solid var(--action-deep); outline-offset: 2px; border-radius: 4px; }
+
+  ::selection { background: var(--action); color: var(--surface); }
+
+  /* --- The bar --- */
+
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    padding: 1.125rem var(--gutter);
+    border-bottom: 1px solid transparent;
+    background: var(--ground);
+    transition: border-color 0.2s;
+  }
+
+  .bar.scrolled { border-bottom-color: var(--line); }
+
+  h1 {
+    flex: none;
+    margin: 0;
+    color: var(--brand);
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.015em;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    height: 2.625rem;
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .field:focus-within { outline: 2px solid var(--action-deep); outline-offset: 1px; }
+
+  .field input {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    border-radius: 8px;
+    padding: 0 1rem;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    outline: none;
+  }
+
+  .field input::placeholder { color: var(--soft); opacity: 1; }
+
+  .field input::-webkit-search-cancel-button { display: none; }
+
+  .search { flex: 1 1 16rem; max-width: 28.75rem; }
+  .search svg { flex: none; width: 1.125rem; height: 1.125rem; margin-left: 0.875rem; color: var(--soft); }
+  .search input { padding-left: 0.625rem; }
+
+  .send { flex: 0 1 24rem; margin-left: auto; padding-right: 0.25rem; }
+
+  button { font: inherit; cursor: pointer; }
+
+  .press {
+    display: inline-block;
+    border: 0;
+    border-radius: 8px;
+    padding: 0.5625rem 1.125rem;
+    background: var(--action);
+    color: #fff;
+    font-weight: 600;
+    line-height: 1.25;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.12s;
+  }
+
+  .press:hover { background: var(--action-deep); }
+  .press:disabled { opacity: 0.6; cursor: default; }
+
+  .send .press { flex: none; padding: 0.4375rem 0.875rem; border-radius: 6px; }
+
+  /* --- The shelf --- */
+
+  main { padding: 0.875rem 0 4rem; }
+
+  .row {
+    --gap: 1.375rem;
+    /* Four tiles and a peek of the next, which is what says a row carries on. */
+    --tile: clamp(15rem, calc((100vw - 2 * var(--gutter)) / 4.2 - var(--gap)), 24rem);
+    margin-bottom: 2.5rem;
+  }
+
+  .row-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.75rem;
+    margin: 0 var(--gutter) 0.625rem;
+  }
+
+  .row-head h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+
+  .count { color: var(--soft); font-variant-numeric: tabular-nums; }
+
+  .rail { position: relative; }
+
+  .scroller {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--gap);
+    margin: 0;
+    /* The top and bottom padding keeps focus rings from being cut off by the row's edge. */
+    padding: 0.25rem var(--gutter) 0.5rem;
+    overflow-x: auto;
+    list-style: none;
+    scroll-padding-inline: var(--gutter);
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .scroller::-webkit-scrollbar { display: none; }
+
+  .arrow {
+    position: absolute;
+    /* Centred on the thumbnails. */
+    top: calc(0.25rem + var(--tile) * 9 / 32);
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink);
+    opacity: 0;
+    transform: translateY(-50%);
+    transition: opacity 0.14s linear, background-color 0.12s, color 0.12s;
+  }
+
+  .arrow svg { width: 1.25rem; height: 1.25rem; }
+  .arrow.back { left: max(0.25rem, calc(var(--gutter) - 1.375rem)); }
+  .arrow.next { right: max(0.25rem, calc(var(--gutter) - 1.375rem)); }
+  .rail:hover .arrow { opacity: 1; }
+  .arrow:hover { background: var(--action); color: #fff; }
+
+  .tile { position: relative; flex: none; width: var(--tile); min-width: 0; scroll-snap-align: start; }
+  .tile.open { z-index: 20; }
+
+  .thumb {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--line);
+  }
+
+  .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  /* A job's stage is the progress bar a streaming service uses for how much you've watched. */
+  .tile { --progress: 0%; }
+  .tile[data-status="queued"] { --progress: 6%; }
+  .tile[data-status="fetching"] { --progress: 30%; }
+  .tile[data-status="summarizing"] { --progress: 65%; }
+  .tile[data-status="writing"] { --progress: 92%; }
+
+  /* YouTube's gray stand-in for a video with no picture, which only looks worse enlarged. */
+  .thumb img.missing { visibility: hidden; }
+
+  /* Answers the pointer straight away, during the moment before the card opens. */
+  @media (hover: hover) and (pointer: fine) {
+    .thumb img { transition: transform 0.28s var(--out); }
+    .thumb:hover img { transform: scale(1.04); }
+  }
+
+  .progress {
+    position: absolute;
+    inset: auto 0 0;
+    height: 5px;
+    background: rgba(255, 245, 243, 0.55);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .progress i {
+    display: block;
+    width: var(--progress);
+    height: 100%;
+    background: var(--action);
+    transition: width 0.9s var(--out);
+  }
+
+  .tile[data-status="queued"] .progress,
+  .tile[data-status="fetching"] .progress,
+  .tile[data-status="summarizing"] .progress,
+  .tile[data-status="writing"] .progress { opacity: 1; }
+
+  .title {
+    display: -webkit-box;
+    margin: 0.625rem 0 0.125rem;
+    overflow: hidden;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .title a { text-decoration: none; }
+  .title a:hover { text-decoration: underline; }
+
+  .channel, .state, .why { margin: 0; color: var(--soft); }
+  .state { font-weight: 600; }
+
+  /* One line at rest, so one failure can't stretch a whole row. The card has the whole message. */
+  .why {
+    display: -webkit-box;
+    margin-top: 0.125rem;
+    overflow: hidden;
+    font-size: 0.9375rem;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .tile[data-status="failed"] .state,
+  .tile[data-status="needs_transcription"] .state,
+  .card .state.stuck { color: var(--action-deep); }
+
+  .rest-tldr {
+    display: none;
+    margin: 0.25rem 0 0;
+    overflow: hidden;
+    font-size: 0.9375rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .state-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; }
+
+  .state-line .retry {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: var(--action-deep);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1px;
+  }
+
+  .state-line .retry:hover { color: var(--ink); }
+  .tile.open .state-line .retry { visibility: hidden; }
+
+  .rest-actions { display: none; margin-top: 0.375rem; }
+
+  .watch { color: var(--soft); }
+  .watch:hover { color: var(--ink); }
+
+  /* --- The pop-out --- */
+
+  /* Fixed to the screen, because a scrolling row would cut off anything positioned inside it. */
+  .card {
+    position: fixed;
+    display: none;
+    overflow: hidden;
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 24px 48px rgba(90, 20, 26, 0.34), 0 4px 12px rgba(90, 20, 26, 0.16);
+    opacity: 0;
+    /* The starting transform lays the card's picture exactly over the thumbnail it grows from. */
+    transform: translate(var(--start-x, 0), var(--start-y, 0)) scale(var(--start-scale, 1));
+    transform-origin: 50% var(--media-centre, 25%);
+    transition: transform 0.26s var(--out), opacity 0.08s linear, box-shadow 0.26s;
+    will-change: transform;
+  }
+
+  .tile.open .card { display: block; }
+  .tile.open .card.flipped { display: flex; flex-direction: column-reverse; }
+  .card .media { flex: none; }
+
+  /* The focused link underneath is covered by the card, so the card shows the focus instead. */
+  .tile:has(:focus-visible) .card { outline: 2px solid var(--action-deep); outline-offset: 2px; }
+  .tile.shown .card { opacity: 1; transform: none; }
+
+  .media {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--ink);
+  }
+
+  /* Stills and the player share one frame, so what moves is the video and never the layout. */
+  .media img,
+  .player,
+  .player iframe {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: 0;
+  }
+
+  .media:not(:has(img:not(.missing))) { background: var(--line); }
+
+  /* The new still fades in over the old one, so what's behind them can never show through. */
+  .media img { opacity: 0; }
+  .media img.was { opacity: 1; }
+  .media img.on { z-index: 1; opacity: 1; transition: opacity 0.22s linear; }
+  .media img.missing { display: none; }
+  .media .player { z-index: 1; }
+  .media .progress { z-index: 2; }
+
+  .player { opacity: 0; pointer-events: none; transition: opacity 0.4s linear; }
+  .player.playing { opacity: 1; }
+
+  .body { padding: 1rem 1.25rem 1.25rem; }
+
+  .body h4 {
+    display: -webkit-box;
+    margin: 0 0 0.375rem;
+    overflow: hidden;
+    font-size: 1.625rem;
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .body h4 a { text-decoration: none; }
+  .body h4 a:hover { text-decoration: underline; }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 0 0.875rem; margin: 0 0 0.5rem; }
+  .category { color: var(--action-deep); font-weight: 600; }
+  .by, .when { color: var(--soft); }
+
+  .tldr { margin: 0 0 0.625rem; }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.125rem 0.75rem;
+    margin: 0 0 0.875rem;
+    padding: 0;
+    color: var(--soft);
+    font-size: 0.875rem;
+    list-style: none;
+  }
+
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+
+  /* --- Everything around the shelf --- */
+
+  .notice { max-width: 34rem; margin: 2rem var(--gutter); color: var(--soft); font-size: 1.125rem; text-wrap: pretty; }
+  .notice button { border: 0; padding: 0; background: none; color: var(--action-deep); font-weight: 600; text-decoration: underline; text-underline-offset: 0.18em; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(1.5rem, env(safe-area-inset-bottom));
+    z-index: 30;
+    display: flex;
+    gap: 0.875rem;
+    align-items: baseline;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    border-radius: 8px;
+    padding: 0.75rem 1.125rem;
+    background: var(--ink);
+    color: var(--surface);
+    overflow-wrap: anywhere;
+    transform: translateX(-50%);
+  }
+
+  .toast:empty { display: none; }
+  .toast a { flex: none; color: #fff; font-weight: 600; }
+  .toast.problem { background: var(--action-deep); color: #fff; }
+
+  [hidden] { display: none !important; }
+
+  /* --- Without a mouse there's no hover: a tap opens the note, and the summary sits under the title. --- */
+
+  @media (hover: none), (pointer: coarse) {
+    .rest-tldr:not(:empty) { display: -webkit-box; }
+    .why { -webkit-line-clamp: 2; }
+    .rest-actions { display: block; }
+    .state-line .retry { padding-block: 0.375rem; }
+    /* Swiping scrolls a row, so the arrows only get in the way. */
+    .arrow { display: none; }
+  }
+
+  @media (max-width: 40rem) {
+    .bar { position: static; padding-block: 0.875rem; }
+    h1 { font-size: 1.5rem; }
+    .search { flex: 1 1 10rem; max-width: none; }
+    .send { flex: 1 1 100%; margin-left: 0; }
+
+    .row { --gap: 0.875rem; --tile: min(72vw, 18rem); margin-bottom: 2rem; }
+    .row-head h2 { font-size: 1.3125rem; }
+    .title { font-size: 1.125rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .thumb img, .progress i, .media img.on, .player, .bar, .arrow { transition: none; }
+    .thumb:hover img { transform: none; }
+  }
+</style>
+</head>
+<body>
+<header class="bar" id="bar">
+  <h1>Video notes</h1>
+  <label class="field search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+    <input id="search" type="search" placeholder="Search videos" aria-label="Search videos" autocomplete="off" spellcheck="false">
+  </label>
+  <form class="field send" id="send" novalidate>
+    <input id="url" name="url" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off"
+           spellcheck="false" placeholder="Paste a YouTube link" aria-label="YouTube link">
+    <button class="press" id="submit" type="submit">Add</button>
+  </form>
+</header>
+
+<main>
+  <p class="notice" id="empty" hidden>No videos yet. Paste a YouTube link above to make your first note.</p>
+  <p class="notice" id="nomatch" hidden><span id="nomatch-text"></span> <button id="clear" type="button">Clear search</button></p>
+  <div id="shelf"></div>
+</main>
+
+<div class="toast" id="message" role="status"></div>
+
+<template id="row">
+  <section class="row">
+    <div class="row-head">
+      <h2></h2>
+      <span class="count"></span>
+    </div>
+    <div class="rail">
+      <ul class="scroller"></ul>
+      <button class="arrow back" type="button" tabindex="-1" aria-hidden="true" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>
+      </button>
+      <button class="arrow next" type="button" tabindex="-1" aria-hidden="true" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+      </button>
+    </div>
+  </section>
+</template>
+
+<template id="tile">
+  <li class="tile">
+    <a class="thumb" tabindex="-1" aria-hidden="true">
+      <span class="progress"><i></i></span>
+    </a>
+    <h3 class="title"><a class="title-link"></a></h3>
+    <p class="channel" hidden></p>
+    <div class="state-line">
+      <p class="state" hidden></p>
+      <button class="retry" type="button" hidden>Try again</button>
+    </div>
+    <p class="why" hidden></p>
+    <p class="rest-tldr"></p>
+    <div class="rest-actions">
+      <a class="watch" target="_blank" rel="noopener">Watch on YouTube</a>
+    </div>
+    <div class="card">
+      <a class="media" tabindex="-1" aria-hidden="true">
+        <div class="player" inert></div>
+        <span class="progress"><i></i></span>
+      </a>
+      <div class="body">
+        <h4><a class="card-link"></a></h4>
+        <p class="meta"><span class="category"></span><span class="by"></span><span class="when" hidden></span></p>
+        <p class="state" hidden></p>
+        <p class="tldr" hidden></p>
+        <ul class="tags" hidden></ul>
+        <div class="actions">
+          <a class="press open-note" hidden>Open note</a>
+          <button class="press retry" type="button" hidden>Try again</button>
+          <a class="watch" target="_blank" rel="noopener">Watch</a>
+        </div>
+      </div>
+    </div>
+  </li>
+</template>
+
+<script>
+  // Everything from the server goes in through textContent or a known attribute, never as HTML:
+  // titles and error messages come from YouTube and from yt-dlp.
+  const STATES = {
+    queued: "Waiting to start",
+    fetching: "Reading captions",
+    summarizing: "Summarizing",
+    writing: "Writing the note",
+    needs_transcription: "No captions to summarize",
+    failed: "Couldn't summarize",
+  };
+  const ACTIVE = new Set(["queued", "fetching", "summarizing", "writing"]);
+  const CHECK_ACTIVE_MS = 2000;
+  const CHECK_IDLE_MS = 15000;
+  const UNREACHABLE = "Can't reach the server. Check that it's running.";
+  const ADDED = "Added. A note usually takes about a minute.";
+  const NOTE_SHOWN_MS = 8000;
+
+  const HOVER_INTENT_MS = 280;  // So crossing the grid doesn't set off every thumbnail on the way.
+  const CLOSE_GRACE_MS = 120;
+  const FRAME_MS = 1100;
+  const VIDEO_AFTER_MS = 300;
+  // YouTube draws its title, pause icon and "more videos" over a video that has just started,
+  // and they can't be turned off. So it plays hidden behind the stills until they've gone.
+  const REVEAL_AFTER_PLAYING_MS = 4000;
+  const CARD_WIDTH = 440;
+  const VIEW_MARGIN = 16;
+
+  const canHover = matchMedia("(hover: hover) and (pointer: fine)");
+  const calm = matchMedia("(prefers-reduced-motion: reduce)");
+
+  const byId = (id) => document.getElementById(id);
+  const form = byId("send");
+  const input = byId("url");
+  const button = byId("submit");
+  const search = byId("search");
+  const message = byId("message");
+  const empty = byId("empty");
+  const nomatch = byId("nomatch");
+  const shelf = byId("shelf");
+  const bar = byId("bar");
+  const template = byId("tile");
+  const rowTemplate = byId("row");
+
+  // One element per video. Keeping it between checks means nothing reloads or loses focus.
+  const elements = new Map();
+  // One row per month, plus one for what has no summary date yet.
+  const rows = new Map();
+  const NOT_SUMMARIZED = "not-summarized";
+  let timer = null;
+  let messageTimer = null;
+
+  function say(text, { problem = false, link = null, expires = false } = {}) {
+    clearTimeout(messageTimer);
+    message.textContent = "";
+    message.classList.toggle("problem", problem);
+    if (text) message.append(Object.assign(document.createElement("span"), { textContent: text }));
+    if (link) {
+      message.append(Object.assign(document.createElement("a"), { href: link, textContent: "Open note" }));
+    }
+    if (expires) messageTimer = setTimeout(() => say(""), NOTE_SHOWN_MS);
+  }
+
+  function timeAgo(iso) {
+    const seconds = (new Date(iso) - Date.now()) / 1000;
+    if (seconds <= -7 * 86400) return `on ${new Date(iso).toLocaleDateString()}`;
+    const format = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+    for (const [unit, size] of [["day", 86400], ["hour", 3600], ["minute", 60]]) {
+      if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
+    }
+    return "just now";
+  }
+
+  const isPlaceholder = (image) => image.naturalWidth <= 120;
+  const still = (videoId, name) => `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/${name}.jpg`;
+  const watchUrl = (videoId) => `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+
+  // --- The YouTube player, loaded the first time a preview needs it ---
+
+  let playerApi = null;
+
+  function loadPlayerApi() {
+    playerApi ||= new Promise((resolve, reject) => {
+      window.onYouTubeIframeAPIReady = () => resolve(window.YT);
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      script.onerror = reject;
+      document.head.append(script);
+    });
+    return playerApi;
+  }
+
+  // --- The pop-out: only one is ever open, so there's only ever one player ---
+
+  let openTile = null;
+  let openTimer = null;
+  let closeTimer = null;
+  let frameTimer = null;
+  let videoTimer = null;
+  let revealTimer = null;
+  let player = null;
+
+  // Where a card's top edge would cut through a row heading's letters, move it just clear.
+  function clearOfHeadings(cardTop, left, right, ceiling) {
+    for (const row of rows.values()) {
+      const head = row.section.querySelector(".row-head").getBoundingClientRect();
+      const textRight = row.count.getBoundingClientRect().right;
+      const inBand = cardTop > head.top - 6 && cardTop < head.bottom + 6;
+      if (inBand && left < textRight && right > head.left) {
+        return head.top - 8 >= ceiling ? head.top - 8 : head.bottom + 6;
+      }
+    }
+    return cardTop;
+  }
+
+  function place(tile) {
+    const card = tile.querySelector(".card");
+    const thumb = tile.querySelector(".thumb").getBoundingClientRect();
+    const width = Math.min(CARD_WIDTH, Math.max(thumb.width * 1.35, 320), innerWidth - VIEW_MARGIN * 2);
+    card.style.width = `${width}px`;
+    const mediaHeight = (width * 9) / 16;
+    const height = card.offsetHeight;
+
+    // The picture is centred on the thumbnail, then nudged so it stays on screen and clear of the bar.
+    const left = thumb.left + thumb.width / 2 - width / 2;
+    const top = thumb.top + thumb.height / 2 - mediaHeight / 2;
+    const ceiling = Math.max(bar.getBoundingClientRect().bottom + 8, VIEW_MARGIN);
+    const limit = innerHeight - VIEW_MARGIN;
+    const shiftX = Math.max(VIEW_MARGIN - left, Math.min(0, innerWidth - VIEW_MARGIN - width - left));
+
+    // With no room below, the details go above, so the preview stays where the pointer is.
+    const flipped = top + height > limit && top + mediaHeight - height >= ceiling;
+    card.classList.toggle("flipped", flipped);
+
+    let cardTop = flipped ? top + mediaHeight - height : top;
+    if (!flipped) {
+      // Sit below the row's heading rather than slicing through its letters.
+      const heading = tile.closest(".row").querySelector(".row-head").getBoundingClientRect();
+      if (cardTop < heading.bottom + 6) cardTop = heading.bottom + 6;
+      cardTop = Math.max(ceiling, Math.min(cardTop, limit - height));
+    }
+    cardTop = clearOfHeadings(cardTop, left + shiftX, left + shiftX + width, ceiling);
+    const shiftY = cardTop - (flipped ? top + mediaHeight - height : top);
+
+    card.style.left = `${left + shiftX}px`;
+    card.style.top = `${cardTop}px`;
+    card.style.setProperty("--start-x", `${-shiftX}px`);
+    card.style.setProperty("--start-y", `${-shiftY}px`);
+    card.style.setProperty("--start-scale", thumb.width / width);
+    card.style.setProperty("--media-centre", `${flipped ? height - mediaHeight / 2 : mediaHeight / 2}px`);
+  }
+
+  function open(tile) {
+    clearTimeout(closeTimer);
+    if (openTile === tile) return;
+    close();
+    openTile = tile;
+    tile.classList.add("open");
+    // Jump to the starting size with no transition, or the growth below would cancel out against it.
+    const card = tile.querySelector(".card");
+    card.style.transition = "none";
+    place(tile);
+    card.getBoundingClientRect();
+    card.style.transition = "";
+    tile.classList.add("shown");
+    startPreview(tile);
+  }
+
+  function close() {
+    clearTimeout(openTimer);
+    clearTimeout(closeTimer);
+    if (!openTile) return;
+    stopPreview();
+    const tile = openTile;
+    openTile = null;
+    tile.classList.remove("shown");
+    const hide = () => { if (openTile !== tile) tile.classList.remove("open"); };
+    if (calm.matches) hide();
+    else setTimeout(hide, 160);
+  }
+
+  function startPreview(tile) {
+    const videoId = tile.dataset.video;
+    const media = tile.querySelector(".media");
+    if (!media.querySelector("img")) {
+      const stills = ["hqdefault", "hq1", "hq2", "hq3"].map((name) => {
+        const frame = Object.assign(new Image(), { alt: "", src: still(videoId, name) });
+        frame.onload = () => frame.classList.toggle("missing", isPlaceholder(frame));
+        frame.onerror = () => frame.classList.add("missing");
+        return frame;
+      });
+      media.prepend(...stills);
+    }
+    const frames = [...media.querySelectorAll("img")];
+    frames.forEach((frame, i) => {
+      frame.style.transition = "none";
+      frame.classList.remove("was");
+      frame.classList.toggle("on", i === 0);
+    });
+    media.getBoundingClientRect();
+    frames.forEach((frame) => { frame.style.transition = ""; });
+
+    // With reduced motion, the card still opens but nothing plays by itself.
+    if (calm.matches) return;
+
+    let shown = 0;
+    frameTimer = setInterval(() => {
+      const usable = frames.filter((frame) => !frame.classList.contains("missing") && frame.complete && frame.naturalWidth);
+      if (usable.length < 2) return;
+      const next = usable[(usable.indexOf(frames[shown]) + 1) % usable.length];
+      frames.forEach((frame) => frame.classList.remove("was"));
+      frames[shown].classList.replace("on", "was");
+      next.classList.add("on");
+      shown = frames.indexOf(next);
+    }, FRAME_MS);
+
+    videoTimer = setTimeout(() => startVideo(tile, videoId), VIDEO_AFTER_MS);
+  }
+
+  async function startVideo(tile, videoId) {
+    let YT;
+    try {
+      YT = await loadPlayerApi();
+    } catch {
+      return;  // No player available. The stills carry on.
+    }
+    if (openTile !== tile) return;
+
+    const slot = tile.querySelector(".player");
+    slot.replaceChildren(document.createElement("div"));
+    player = new YT.Player(slot.firstChild, {
+      host: "https://www.youtube-nocookie.com",
+      videoId,
+      playerVars: {
+        autoplay: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, mute: 1,
+        playsinline: 1, rel: 0, cc_load_policy: 0, origin: location.origin,
+      },
+      events: {
+        onReady: ({ target }) => {
+          target.mute();
+          // Skip the intro, which rarely says what a video is about.
+          const duration = target.getDuration();
+          if (duration > 120) target.seekTo(duration * 0.15, true);
+          target.playVideo();
+        },
+        onStateChange: ({ data, target }) => {
+          if (data === YT.PlayerState.PLAYING && openTile === tile) {
+            // A muted player turns captions on by itself, and the setting above doesn't stop it.
+            target.unloadModule("captions");
+            target.unloadModule("cc");
+            revealTimer ??= setTimeout(() => {
+              slot.classList.add("playing");
+              clearInterval(frameTimer);
+            }, REVEAL_AFTER_PLAYING_MS);
+          }
+          if (data === YT.PlayerState.ENDED) { target.seekTo(0, true); target.playVideo(); }
+        },
+        // Most often the channel doesn't allow embedding. The stills carry on.
+        onError: () => stopPlayer(tile),
+      },
+    });
+  }
+
+  function stopPlayer(tile) {
+    const slot = tile.querySelector(".player");
+    slot.classList.remove("playing");
+    clearTimeout(revealTimer);
+    revealTimer = null;
+    try { player?.destroy(); } catch { /* The player may never have finished loading. */ }
+    player = null;
+    slot.replaceChildren();
+  }
+
+  function stopPreview() {
+    clearInterval(frameTimer);
+    clearTimeout(videoTimer);
+    if (openTile) stopPlayer(openTile);
+  }
+
+  function wire(tile) {
+    tile.querySelector(".thumb").addEventListener("mouseenter", () => {
+      if (!canHover.matches) return;
+      clearTimeout(closeTimer);
+      clearTimeout(openTimer);
+      openTimer = setTimeout(() => open(tile), HOVER_INTENT_MS);
+    });
+    tile.addEventListener("mouseleave", () => {
+      clearTimeout(openTimer);
+      if (openTile === tile) closeTimer = setTimeout(close, CLOSE_GRACE_MS);
+    });
+    // Keyboard users get the same card, and can tab into its links.
+    tile.querySelector(".title-link").addEventListener("focus", (event) => {
+      if (canHover.matches && event.target.matches(":focus-visible")) open(tile);
+    });
+    tile.addEventListener("focusout", (event) => {
+      if (openTile === tile && !tile.contains(event.relatedTarget) && !tile.matches(":hover")) close();
+    });
+    tile.querySelectorAll(".retry").forEach((retry) => {
+      retry.addEventListener("click", async () => {
+        retry.disabled = true;
+        close();
+        await send(tile.dataset.input);
+        retry.disabled = false;
+      });
+    });
+  }
+
+  // --- Drawing the shelf ---
+
+  function build(videoId) {
+    const tile = template.content.firstElementChild.cloneNode(true);
+    tile.dataset.video = videoId;
+    const picture = Object.assign(new Image(), { alt: "", src: still(videoId, "mqdefault"), loading: "lazy", decoding: "async" });
+    picture.onload = () => picture.classList.toggle("missing", isPlaceholder(picture));
+    tile.querySelector(".thumb").prepend(picture);
+    tile.querySelectorAll(".watch").forEach((link) => { link.href = watchUrl(videoId); });
+    wire(tile);
+    return tile;
+  }
+
+  // yt-dlp and Python errors explain nothing to someone reading a shelf of videos.
+  const PLAIN_ERRORS = [
+    [/429|too many requests/i, "YouTube is limiting requests. Try again in a few minutes."],
+    [/private video|video unavailable|has been removed|not available/i, "This video is private or no longer available."],
+    [/sign in to confirm/i, "YouTube asked for a sign-in check. Try again later."],
+    [/no provider could answer/i, "The summarizer couldn't be reached. Try again in a few minutes."],
+    [/valid summary json/i, "The summary came back unusable. Try again."],
+  ];
+
+  function plainError(error) {
+    if (!error) return "";
+    for (const [pattern, plain] of PLAIN_ERRORS) if (pattern.test(error)) return plain;
+    // The harness's own messages are already plain. An exception's name means this one isn't.
+    return /^\w+(Error|Exception)\b/.test(error) ? "Something went wrong while summarizing. Try again." : error;
+  }
+
+  function fill(element, text) {
+    element.textContent = text || "";
+    element.hidden = !text;
+  }
+
+  function linkTo(link, job) {
+    link.href = job.note_url || watchUrl(job.video_id);
+    if (job.note_url) link.removeAttribute("target");
+    else { link.target = "_blank"; link.rel = "noopener"; }
+  }
+
+  function update(tile, job) {
+    const part = (selector) => tile.querySelector(selector);
+    const title = job.title || `youtu.be/${job.video_id}`;
+    const state = job.status === "done" ? "" : STATES[job.status] || job.status;
+
+    tile.dataset.status = job.status;
+    tile.dataset.input = job.input;
+    tile.dataset.search = [title, job.channel, job.category, job.tldr, ...job.tags].join(" ").toLowerCase();
+
+    [part(".thumb"), part(".title-link"), part(".media"), part(".card-link")].forEach((link) => linkTo(link, job));
+    part(".title-link").textContent = title;
+    part(".card-link").textContent = title;
+
+    fill(part(".channel"), job.channel);
+    fill(part(".state-line .state"), state);
+    fill(part(".why"), plainError(job.error));
+    part(".why").title = job.error || "";
+    part(".rest-tldr").textContent = job.tldr || "";
+
+    part(".meta").hidden = !job.category && !job.channel && job.status !== "done";
+    fill(part(".category"), job.category);
+    fill(part(".by"), job.channel);
+    fill(part(".card .state"), state);
+    part(".card .state").classList.toggle("stuck", job.status === "failed" || job.status === "needs_transcription");
+    fill(part(".tldr"), job.tldr || plainError(job.error));
+    part(".tldr").title = job.tldr ? "" : job.error || "";
+
+    const tags = part(".tags");
+    const current = job.tags.join(" ");
+    if (tags.dataset.current !== current) {
+      tags.dataset.current = current;
+      tags.replaceChildren(...job.tags.map((tag) => Object.assign(document.createElement("li"), { textContent: tag })));
+    }
+    tags.hidden = job.tags.length === 0;
+
+    const openNote = part(".open-note");
+    openNote.hidden = !job.note_url;
+    if (job.note_url) openNote.href = job.note_url;
+    tile.querySelectorAll(".retry").forEach((retry) => { retry.hidden = job.status !== "failed"; });
+    fill(part(".when"), job.status === "done" ? `Summarized ${timeAgo(job.updated_at)}` : "");
+  }
+
+  // A finished video goes in the month it was summarized, the same as its folder in the vault.
+  const rowKey = (job) => (job.status === "done" ? (job.summarized || job.updated_at).slice(0, 7) : NOT_SUMMARIZED);
+
+  function rowTitle(key) {
+    if (key === NOT_SUMMARIZED) return "Not summarized yet";
+    const [year, month] = key.split("-").map(Number);
+    return new Date(year, month - 1, 1).toLocaleDateString("en", { month: "long", year: "numeric" });
+  }
+
+  function buildRow(key) {
+    const section = rowTemplate.content.firstElementChild.cloneNode(true);
+    const row = {
+      section,
+      list: section.querySelector(".scroller"),
+      count: section.querySelector(".count"),
+      back: section.querySelector(".back"),
+      next: section.querySelector(".next"),
+    };
+    const heading = section.querySelector("h2");
+    heading.textContent = rowTitle(key);
+    heading.id = `row-${key}`;
+    section.setAttribute("aria-labelledby", heading.id);
+
+    const page = (direction) => {
+      row.list.scrollBy({ left: direction * row.list.clientWidth * 0.8, behavior: calm.matches ? "auto" : "smooth" });
+    };
+    row.back.addEventListener("click", () => page(-1));
+    row.next.addEventListener("click", () => page(1));
+    row.list.addEventListener("scroll", () => updateArrows(row), { passive: true });
+    return row;
+  }
+
+  function updateArrows(row) {
+    const { scrollLeft, clientWidth, scrollWidth } = row.list;
+    row.back.hidden = scrollLeft <= 4;
+    row.next.hidden = scrollLeft + clientWidth >= scrollWidth - 4;
+  }
+
+  function applySearch() {
+    const words = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let total = 0;
+    for (const row of rows.values()) {
+      let visible = 0;
+      for (const tile of row.list.children) {
+        const matches = words.every((word) => tile.dataset.search.includes(word));
+        tile.hidden = !matches;
+        if (matches) visible += 1;
+      }
+      row.section.hidden = visible === 0;
+      row.count.textContent = visible === 1 ? "1 video" : `${visible} videos`;
+      total += visible;
+      updateArrows(row);
+    }
+    nomatch.hidden = elements.size === 0 || total > 0;
+    if (!nomatch.hidden) byId("nomatch-text").textContent = `No videos match “${search.value.trim()}”.`;
+  }
+
+  function render(jobs) {
+    // The newest job for a video is the one that counts: a retry replaces the failure before it.
+    const latest = new Map();
+    for (const job of jobs) if (!latest.has(job.video_id)) latest.set(job.video_id, job);
+
+    for (const [videoId, tile] of elements) {
+      if (!latest.has(videoId)) {
+        if (openTile === tile) close();
+        tile.remove();
+        elements.delete(videoId);
+      }
+    }
+
+    const groups = new Map();
+    for (const job of latest.values()) {
+      const key = rowKey(job);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(job);
+    }
+    // Unfinished work first, then the newest month. "YYYY-MM" sorts by date as plain text.
+    const order = [...groups.keys()].sort((a, b) => {
+      if (a === NOT_SUMMARIZED) return -1;
+      if (b === NOT_SUMMARIZED) return 1;
+      return b.localeCompare(a);
+    });
+
+    // Only move what's out of place, so nothing loses keyboard focus or reloads its image.
+    order.forEach((key, rowPosition) => {
+      if (!rows.has(key)) rows.set(key, buildRow(key));
+      const row = rows.get(key);
+      if (shelf.children[rowPosition] !== row.section) shelf.insertBefore(row.section, shelf.children[rowPosition] || null);
+
+      groups.get(key).forEach((job, position) => {
+        if (!elements.has(job.video_id)) elements.set(job.video_id, build(job.video_id));
+        const tile = elements.get(job.video_id);
+        update(tile, job);
+        if (row.list.children[position] !== tile) {
+          if (openTile) close();
+          row.list.insertBefore(tile, row.list.children[position] || null);
+        }
+      });
+    });
+
+    for (const [key, row] of rows) {
+      if (!groups.has(key)) {
+        row.section.remove();
+        rows.delete(key);
+      }
+    }
+
+    applySearch();
+    if (openTile) place(openTile);
+    empty.hidden = latest.size > 0;
+    return [...latest.values()].some((job) => ACTIVE.has(job.status));
+  }
+
+  // --- Talking to the server ---
+
+  async function refresh() {
+    clearTimeout(timer);
+    let active = false;
+    try {
+      const response = await fetch("jobs?limit=1000", { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      active = render((await response.json()).jobs);
+      // Each message is only true for a while: until the server is back, or the work is finished.
+      if (message.textContent === UNREACHABLE || (message.textContent === ADDED && !active)) say("");
+    } catch {
+      say(UNREACHABLE, { problem: true });
+    }
+    if (!document.hidden) timer = setTimeout(refresh, active ? CHECK_ACTIVE_MS : CHECK_IDLE_MS);
+  }
+
+  // Returns whether the server took the link.
+  async function send(url) {
+    try {
+      const response = await fetch("videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        say("That isn't a YouTube video link. Paste one from youtube.com or youtu.be.", { problem: true });
+        return false;
+      }
+      if (body.cached) say("Already summarized.", { link: body.note_url, expires: true });
+      else say(ADDED);
+      await refresh();
+      return true;
+    } catch {
+      say(UNREACHABLE, { problem: true });
+      return false;
+    }
+  }
+
+  // --- Events ---
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const url = input.value.trim();
+    if (!url) {
+      say("Paste a YouTube link first.", { problem: true, expires: true });
+      input.focus();
+      return;
+    }
+    button.disabled = true;
+    const accepted = await send(url);
+    button.disabled = false;
+    if (accepted) input.value = "";
+    input.focus();
+  });
+
+  // Pasting into the empty field is the whole action; there's nothing else to fill in.
+  input.addEventListener("paste", () => {
+    if (input.value.trim()) return;
+    setTimeout(() => { if (input.value.trim()) form.requestSubmit(); });
+  });
+
+  // Pasting a link anywhere on the page works too, unless you're typing in a field.
+  document.addEventListener("paste", (event) => {
+    if (event.target.closest("input, textarea")) return;
+    const text = event.clipboardData?.getData("text")?.trim();
+    if (text && /youtu\.?be/i.test(text) && !/\s/.test(text)) {
+      input.value = text;
+      form.requestSubmit();
+    }
+  });
+
+  search.addEventListener("input", () => { close(); applySearch(); });
+  byId("clear").addEventListener("click", () => { search.value = ""; applySearch(); search.focus(); });
+
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+  // Capturing, because a row's own scrolling doesn't bubble up to the window.
+  addEventListener("scroll", () => {
+    bar.classList.toggle("scrolled", scrollY > 4);
+    if (!openTile) return;
+    // Tabbing into a card can scroll things, and closing it then would throw away the focus.
+    if (openTile.contains(document.activeElement)) place(openTile);
+    else close();
+  }, { passive: true, capture: true });
+  addEventListener("resize", () => {
+    close();
+    rows.forEach(updateArrows);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { clearTimeout(timer); close(); }
+    else refresh();
+  });
+
+  refresh();
+</script>
+</body>
+</html>

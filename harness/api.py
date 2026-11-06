@@ -1,19 +1,23 @@
-"""HTTP entry point: POST /videos queues a link, GET /jobs reports on them.
+"""HTTP entry point: the web page at /, POST /videos queues a link, GET /jobs reports on them.
 
 Run with: uv run uvicorn harness.api:app --host 0.0.0.0 --port 8000
 """
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from urllib.parse import quote, urlencode
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .bootstrap import Harness, build
 from .core.db import Job, Summary
 from .core.jobs import Worker, submit
+
+PAGE = Path(__file__).parent / "web" / "index.html"
 
 
 class VideoIn(BaseModel):
@@ -70,6 +74,11 @@ def create_app(harness: Harness | None = None, *, start_worker: bool = True) -> 
         app.state.worker.stop()
 
     app = FastAPI(title="YouTube Summarizer Harness", lifespan=lifespan)
+
+    @app.get("/", include_in_schema=False)
+    def page() -> FileResponse:
+        # no-cache makes the browser check for a newer page, so an update shows on the next load.
+        return FileResponse(PAGE, media_type="text/html", headers={"Cache-Control": "no-cache"})
 
     @app.post("/videos", status_code=202)
     def submit_video(body: VideoIn, request: Request, response: Response) -> dict:
