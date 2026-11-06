@@ -38,6 +38,7 @@ class Video:
     channel: str
     url: str
     duration: int | None
+    category: str  # YouTube's own, e.g. "Education"; "" when missing
     language: str
     captions: str  # "creator" or "auto"
     transcript: str
@@ -79,6 +80,8 @@ def fetch_video(video_id: str, *, retry_options: dict | None = None) -> Video:
         channel=info.get("channel") or info.get("uploader") or "",
         url=url,
         duration=info.get("duration"),
+        # The creator picks one of about 15 fixed categories; yt-dlp returns it as a list.
+        category=(info.get("categories") or [""])[0],
         language=track.language,
         captions=track.kind,
         transcript=transcript,

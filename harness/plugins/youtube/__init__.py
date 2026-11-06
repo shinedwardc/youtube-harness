@@ -44,6 +44,7 @@ class YouTubePlugin:
             "video_id": source.video_id,
             "title": source.title,
             "channel": source.channel,
+            "category": source.category,
             "url": source.url,
             "language": source.language,
             "captions": source.captions,

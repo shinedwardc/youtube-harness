@@ -13,6 +13,7 @@ def data(**overrides):
         "video_id": "dQw4w9WgXcQ",
         "title": 'Raft: "Consensus" #1',
         "channel": "Example Channel",
+        "category": "Science & Technology",
         "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         "language": "en",
         "captions": "auto",
@@ -44,6 +45,15 @@ def test_frontmatter_survives_quotes_colons_and_hashes():
     assert fields["title"] == 'Raft: "Consensus" #1'
     assert fields["tags"] == ["distributed-systems", "consensus"]
     assert fields["summarized"] == "2026-11-10"
+    assert fields["category"] == "Science & Technology"
+    # Duplicated from the body so Obsidian Bases can show it as a column.
+    assert fields["tldr"] == "One or two sentences."
+
+
+def test_summaries_cached_before_categories_still_render():
+    old = data()
+    del old["category"]
+    assert frontmatter(render_note(TEMPLATE, old))["category"] == ""
 
 
 def test_timestamps_link_to_that_moment():

@@ -21,7 +21,9 @@ def test_a_new_link_goes_through_to_a_note(store, plugin, vault):
 
     assert job.status == "done"
     assert (vault / job.note_path).exists()
-    assert store.get_summary("youtube", "dQw4w9WgXcQ").data["model"] == "fake:model"
+    data = store.get_summary("youtube", "dQw4w9WgXcQ").data
+    assert data["model"] == "fake:model"
+    assert data["category"] == "Education"
 
 
 def test_the_same_link_twice_comes_from_the_cache(store, plugin, vault, fetched):

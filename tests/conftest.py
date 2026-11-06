@@ -45,6 +45,7 @@ def make_video(video_id="dQw4w9WgXcQ", *, language="en", transcript=None, title=
         channel="Example Channel",
         url=f"https://www.youtube.com/watch?v={video_id}",
         duration=120,
+        category="Education",
         language=language,
         captions="creator",
         transcript=transcript or "[00:00] Welcome to the video.\n\n[01:00] Raft elects a leader.",

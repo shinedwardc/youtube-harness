@@ -1,0 +1,40 @@
+filters:
+  and:
+    - 'file.inFolder("youtube")'
+    - 'file.ext == "md"'
+formulas:
+  video: 'file.asLink(title)'
+properties:
+  formula.video:
+    displayName: Video
+  channel:
+    displayName: Channel
+  category:
+    displayName: Category
+  summarized:
+    displayName: Summarized
+  tldr:
+    displayName: TL;DR
+  tags:
+    displayName: Tags
+views:
+  - type: table
+    name: By category
+    groupBy:
+      property: note.category
+      direction: ASC
+    order:
+      - formula.video
+      - note.channel
+      - note.summarized
+      - note.tldr
+      - note.tags
+  - type: table
+    name: Latest
+    limit: 50
+    order:
+      - formula.video
+      - note.channel
+      - note.category
+      - note.summarized
+      - note.tldr

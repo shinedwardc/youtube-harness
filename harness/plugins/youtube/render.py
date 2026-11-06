@@ -42,6 +42,8 @@ def render_note(template: str, data: dict) -> str:
     return Template(template).substitute(
         title=quoted(data["title"]),
         channel=quoted(data["channel"]),
+        # Summaries cached before categories were added have none.
+        category=quoted(data.get("category", "")),
         url=data["url"],
         video_id=data["video_id"],
         language=data["language"],
@@ -49,6 +51,8 @@ def render_note(template: str, data: dict) -> str:
         summarized=data["summarized"],
         model=quoted(data["model"]),
         tags=quoted(data["tags"]),
+        # Also in the frontmatter, because Obsidian Bases can only show properties as columns.
+        tldr_property=quoted(data["tldr"]),
         tldr=data["tldr"],
         key_points="\n".join(f"- {point}" for point in data["key_points"]) or "- (none)",
         timestamps="\n".join(timestamps) or "- (none)",
