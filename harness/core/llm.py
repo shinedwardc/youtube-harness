@@ -5,7 +5,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from openai import APIError, OpenAI
+from openai import APIError, OpenAI, Timeout
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,9 @@ DEFAULT_FALLBACK = "groq"
 MAX_OUTPUT_TOKENS = 8192
 # The SDK retries connection errors, timeouts, 429s and 5xx with exponential backoff.
 MAX_RETRIES = 3
-TIMEOUT_SECONDS = 120
+# A long summary can take minutes to generate, but an endpoint that is up connects in
+# well under a second; a short connect timeout makes a dead one fail fast.
+TIMEOUT = Timeout(120, connect=10)
 
 
 class ConfigError(Exception):
@@ -107,7 +109,7 @@ class LLM:
             base_url=config.base_url,
             api_key=config.api_key,
             max_retries=MAX_RETRIES,
-            timeout=TIMEOUT_SECONDS,
+            timeout=TIMEOUT,
         )
 
     @property
