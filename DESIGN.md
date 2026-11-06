@@ -116,7 +116,7 @@ components:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
     rounded: "{rounded.round}"
-    size: "2.75rem"
+    size: "3.25rem"
   arrow-hover:
     backgroundColor: "{colors.action}"
     textColor: "{colors.on-action}"
@@ -258,7 +258,7 @@ Solid, plain and quick.
 - **Errors:** Reported in the toast, never by restyling the field.
 
 ### Navigation
-The bar is the only navigation: title, search and paste field. Row arrows are 2.75rem circles of Warm Near-White with a Blush Line border and an Oxblood Ink stroked chevron. They fade in over 0.14s while the pointer is on the row, centred on the thumbnails and straddling the gutter, and turn Action Red with a white chevron under the pointer. An arrow is removed at the row's end. They page by 80% of the row's width and are pointer-only, since keyboards reach every tile by tabbing.
+The bar is the only navigation: title, search and paste field. Row arrows are 3.25rem circles of Warm Near-White with a Blush Line border and an Oxblood Ink stroked chevron. They fade in over 0.14s while the pointer is on the row, centred on the height of the video boxes and straddling the gutter, and turn Action Red with a white chevron under the pointer. The clickable area is larger than the circle: an invisible strip from the row's edge to 0.5rem past the circle, as tall as the boxes, lying on top of the video there so aiming for an arrow can't open that video's card. Cards open clear of a visible arrow's strip. An arrow is removed at the row's end, once the pointer is off it. They page by 80% of the row's width and are pointer-only, since keyboards reach every tile by tabbing.
 
 ### Thumbnail Tile
 - **Box:** A flat Warm Near-White box with 12px corners holds the picture and the text, the same size as every other box on the shelf. The text has 0.75rem by 0.875rem by 0.875rem padding, and unfinished videos get the same box, so nothing jumps when a job finishes.

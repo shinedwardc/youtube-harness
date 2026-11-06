@@ -41,6 +41,7 @@ A personal shelf of videos worth remembering, chosen by hand. It is deliberately
 - Each video is its own clickable thumbnail that pops out a little on hover, as on Netflix, and plays a preview: stills cycling at once, then the real muted video where YouTube allows it (owner's direction).
 - On the shelf, each finished video shows very brief bullet points under its title with nothing hovered. Hovering shows the TL;DR as a paragraph (owner's direction).
 - Each video sits in a box the same size as every other, around its thumbnail, title and bullets. Text is never cut to fit, and spare room stays at the bottom (owner's direction).
+- A link is only added by putting it in the box and pressing Add. Pasting never submits anything by itself, in the box or elsewhere on the page (owner's direction).
 - The product has no logo or marketing name. The page has been titled "Video notes".
 
 ## Evidence on Hand

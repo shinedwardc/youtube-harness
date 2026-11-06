@@ -179,29 +179,40 @@
 
   .scroller::-webkit-scrollbar { display: none; }
 
+  /* The button is the whole strip from the row's edge to just past the circle, exactly as tall as the boxes:
+     top and bottom match the row's padding. It lies on top of the video there, so aiming for an arrow
+     can't set off that video's card. */
   .arrow {
     position: absolute;
-    /* Centred on the thumbnails. */
-    top: calc(0.25rem + var(--tile) * 9 / 32);
+    top: 0.25rem;
+    bottom: 0.5rem;
     z-index: 5;
     display: grid;
-    place-items: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    align-items: center;
+    width: calc(max(0.25rem, var(--gutter) - 1.625rem) + 3.75rem);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    opacity: 0;
+    transition: opacity 0.14s linear;
+  }
+
+  /* The circle, drawn on the chevron itself: 3.25rem across, leaving the chevron its 1.5rem. */
+  .arrow svg {
+    width: 3.25rem;
+    height: 3.25rem;
+    padding: 0.8125rem;
     border: 1px solid var(--line);
     border-radius: 50%;
     background: var(--surface);
-    color: var(--ink);
-    opacity: 0;
-    transform: translateY(-50%);
-    transition: opacity 0.14s linear, background-color 0.12s, color 0.12s;
+    transition: background-color 0.12s, color 0.12s;
   }
 
-  .arrow svg { width: 1.25rem; height: 1.25rem; }
-  .arrow.back { left: max(0.25rem, calc(var(--gutter) - 1.375rem)); }
-  .arrow.next { right: max(0.25rem, calc(var(--gutter) - 1.375rem)); }
+  .arrow.back { left: 0; justify-items: end; padding-right: 0.5rem; }
+  .arrow.next { right: 0; justify-items: start; padding-left: 0.5rem; }
   .rail:hover .arrow { opacity: 1; }
-  .arrow:hover { background: var(--action); color: #fff; }
+  .arrow:hover svg { background: var(--action); color: #fff; }
 
   /* Every box is as tall as the tallest on the shelf (see equalizeTiles), with spare room left at the bottom. */
   .tile {
@@ -215,8 +226,6 @@
     background: var(--surface);
     scroll-snap-align: start;
   }
-
-  .tile.open { z-index: 20; }
 
   .text { padding: 0.75rem 0.875rem 0.875rem; }
 
@@ -356,9 +365,11 @@
 
   /* --- The pop-out --- */
 
-  /* Fixed to the screen, because a scrolling row would cut off anything positioned inside it. */
+  /* Fixed to the screen, because a scrolling row would cut off anything positioned inside it.
+     Only the card goes on top: lifting its whole video too would put that video over the row's arrows. */
   .card {
     position: fixed;
+    z-index: 20;
     display: none;
     overflow: hidden;
     border-radius: 12px;
@@ -656,7 +667,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .card, .thumb img, .progress i, .media img.on, .player, .bar, .arrow, .details[open], .details[open]::backdrop { transition: none; }
+    .card, .thumb img, .progress i, .media img.on, .player, .bar, .arrow, .arrow svg, .details[open], .details[open]::backdrop { transition: none; }
     .thumb:hover img { transform: none; }
   }
 </style>
@@ -903,7 +914,12 @@
     const top = thumb.top + thumb.height / 2 - mediaHeight / 2;
     const ceiling = Math.max(bar.getBoundingClientRect().bottom + 8, VIEW_MARGIN);
     const limit = innerHeight - VIEW_MARGIN;
-    const shiftX = Math.max(VIEW_MARGIN - left, Math.min(0, innerWidth - VIEW_MARGIN - width - left));
+    // A card stays off the row's arrows, or it could open on top of the one the pointer is heading for.
+    const back = tile.closest(".row").querySelector(".back");
+    const next = tile.closest(".row").querySelector(".next");
+    const leftLimit = back.hidden ? VIEW_MARGIN : back.getBoundingClientRect().right;
+    const rightLimit = next.hidden ? document.documentElement.clientWidth - VIEW_MARGIN : next.getBoundingClientRect().left;
+    const shiftX = Math.max(leftLimit - left, Math.min(0, rightLimit - width - left));
 
     // With no room below, the details go above, so the preview stays where the pointer is.
     const flipped = top + height > limit && top + mediaHeight - height >= ceiling;
@@ -1312,13 +1328,16 @@
     row.back.addEventListener("click", () => page(-1));
     row.next.addEventListener("click", () => page(1));
     row.list.addEventListener("scroll", () => updateArrows(row), { passive: true });
+    row.back.addEventListener("mouseleave", () => updateArrows(row));
+    row.next.addEventListener("mouseleave", () => updateArrows(row));
     return row;
   }
 
   function updateArrows(row) {
     const { scrollLeft, clientWidth, scrollWidth } = row.list;
-    row.back.hidden = scrollLeft <= 4;
-    row.next.hidden = scrollLeft + clientWidth >= scrollWidth - 4;
+    // An arrow under the pointer waits for it to leave, or the pointer would drop onto a video and open its card.
+    row.back.hidden = scrollLeft <= 4 && !row.back.matches(":hover");
+    row.next.hidden = scrollLeft + clientWidth >= scrollWidth - 4 && !row.next.matches(":hover");
   }
 
   // A row alone could make its boxes match with CSS, but only a measurement can match them across rows.
@@ -1468,22 +1487,6 @@
     button.disabled = false;
     if (accepted) input.value = "";
     input.focus();
-  });
-
-  // Pasting into the empty field is the whole action; there's nothing else to fill in.
-  input.addEventListener("paste", () => {
-    if (input.value.trim()) return;
-    setTimeout(() => { if (input.value.trim()) form.requestSubmit(); });
-  });
-
-  // Pasting a link anywhere on the page works too, unless you're typing in a field.
-  document.addEventListener("paste", (event) => {
-    if (event.target.closest("input, textarea")) return;
-    const text = event.clipboardData?.getData("text")?.trim();
-    if (text && /youtu\.?be/i.test(text) && !/\s/.test(text)) {
-      input.value = text;
-      form.requestSubmit();
-    }
   });
 
   search.addEventListener("input", () => { close(); applySearch(); });
