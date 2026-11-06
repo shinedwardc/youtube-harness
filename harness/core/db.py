@@ -205,6 +205,11 @@ class Store:
                 (status, error, _now(), job_id),
             )
 
+    def touch(self, job_id: int) -> None:
+        """Record that a job is still being worked on, so requeue_stale leaves it alone."""
+        with self._connect() as conn:
+            conn.execute("UPDATE jobs SET updated_at = ? WHERE id = ?", (_now(), job_id))
+
     def finish(
         self, job: Job, note_path: str, data: dict | None = None, *, source_text: str | None = None
     ) -> None:

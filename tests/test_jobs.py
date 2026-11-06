@@ -5,10 +5,10 @@ from datetime import timedelta
 
 import pytest
 
-from harness.core.jobs import Worker, backfill_source_texts, run, submit, wait
+from harness.core.jobs import STALE_AFTER, Worker, backfill_source_texts, run, submit, wait
 from harness.core.plugin import Unprocessable
 from harness.plugins.youtube import YouTubePlugin
-from tests.conftest import FakeLLM, abandon, make_video
+from tests.conftest import SUMMARY_REPLY, FakeLLM, abandon, make_video
 
 URL = "https://youtu.be/dQw4w9WgXcQ"
 
@@ -174,6 +174,28 @@ def test_running_worker_recovers_an_abandoned_job_without_a_restart(store, plugi
     finished = worker.run_once()
 
     assert finished.id == job.id and finished.status == "done"
+
+
+def test_a_long_map_reduce_never_looks_abandoned(store, vault):
+    transcript = "\n\n".join(f"[{minute:02d}:00] " + "word " * 200 for minute in range(10))
+    plugin = YouTubePlugin(fetcher=lambda video_id: make_video(video_id, transcript=transcript))
+    job = store.claim(submit(store, plugin, URL).job.id)
+    requeued = []
+
+    class SlowLLM(FakeLLM):
+        def complete(self, system, user):
+            # Another process, checking for dead jobs just as this call starts.
+            requeued.append(store.requeue_stale(STALE_AFTER))
+            reply = super().complete(system, user)
+            # Each call takes longer than STALE_AFTER.
+            abandon(store, job.id)
+            return reply
+
+    llm = SlowLLM(["- part one", "- part two", SUMMARY_REPLY], max_input_tokens=1_500)
+    finished = run(job, store=store, plugin=plugin, llms=[llm], vault_dir=vault)
+
+    assert requeued == [0, 0, 0]
+    assert finished.status == "done"
 
 
 def test_worker_leaves_a_recently_updated_job_alone(store, plugin, vault):

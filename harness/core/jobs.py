@@ -50,7 +50,7 @@ def run(job: Job, *, store: Store, plugin: Plugin, llms: Sequence[LLM], vault_di
         source = plugin.fetch(job.item_id)
 
         store.set_status(job.id, "summarizing")
-        data = _summarize(plugin, source, llms)
+        data = _summarize(plugin, source, llms, store, job.id)
 
         store.set_status(job.id, "writing")
         note_path = plugin.write(data, vault_dir)
@@ -70,13 +70,29 @@ def run(job: Job, *, store: Store, plugin: Plugin, llms: Sequence[LLM], vault_di
     return store.get_job(job.id)
 
 
-def _summarize(plugin: Plugin, source, llms: Sequence[LLM]) -> dict:
+class _Heartbeat:
+    """An LLM that marks its job alive after each reply, as a long map-reduce can outlast STALE_AFTER."""
+
+    def __init__(self, llm: LLM, store: Store, job_id: int):
+        self.llm = llm
+        self.store = store
+        self.job_id = job_id
+        self.name = llm.name
+        self.max_input_tokens = llm.max_input_tokens
+
+    def complete(self, system: str, user: str) -> str:
+        reply = self.llm.complete(system, user)
+        self.store.touch(self.job_id)
+        return reply
+
+
+def _summarize(plugin: Plugin, source, llms: Sequence[LLM], store: Store, job_id: int) -> dict:
     """Try each provider in order. Only an unavailable provider moves on to the next."""
     errors = []
     for llm in llms:
         try:
             log.info("Summarizing with %s", llm.name)
-            return plugin.summarize(source, llm)
+            return plugin.summarize(source, _Heartbeat(llm, store, job_id))
         except LLMUnavailable as error:
             log.warning("%s", error)
             errors.append(str(error))
