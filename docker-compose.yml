@@ -1,0 +1,37 @@
+# Start:  docker compose up -d --build
+# Open:   http://localhost:8000
+# Logs:   docker compose logs -f
+# CLI:    docker compose exec harness yt-sum <url>
+# Stop:   docker compose stop     (then `docker compose start`, or Play in Docker Desktop)
+# Remove: docker compose down     (then start it again with the first command)
+#
+# Always start it through Compose. Running the image alone, with `docker run` or the Run button
+# on Docker Desktop's Images page, leaves out the settings, keys, mounts and port below.
+
+services:
+  harness:
+    build: .
+    image: youtube-harness
+    container_name: youtube-harness
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Paths inside the container. These beat the host paths .env may set.
+      HARNESS_VAULT_DIR: /vault
+      HARNESS_DB_PATH: /data/harness.db
+    ports:
+      # The app has no login, so publish it to this machine only. Never bind it to a public address.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Compose reads HARNESS_VAULT_DIR from .env here, so this is the folder on the host.
+      - "${HARNESS_VAULT_DIR:-./vault}:/vault"
+      - ./data:/data
+    mem_limit: 512m
+    # Longer than Worker.stop() waits, so a running job gets requeued before Docker kills the process.
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/jobs?limit=1', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      start_interval: 2s

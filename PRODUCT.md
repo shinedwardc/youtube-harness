@@ -23,7 +23,7 @@ A personal shelf of videos worth remembering, chosen by hand. It is deliberately
 ## Operating Context
 
 - The page is served by the same FastAPI app as the API and worker, as one HTML file with no framework or build step.
-- Runs on the owner's own machine, planned to run in Docker, with phone access planned over Tailscale. There is no login, so the port must never be public.
+- Runs in Docker on the owner's own machine, with phone access planned over Tailscale. There is no login, so the port must never be public.
 - Notes live in an Obsidian vault and sync through Obsidian Sync. Obsidian is where notes are read and edited; this page only points to them.
 - Jobs take about a minute and move through queued, fetching, summarizing, writing, then done, needs_transcription or failed.
 

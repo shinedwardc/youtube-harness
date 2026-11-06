@@ -1,0 +1,9 @@
+# An allowlist, so .env, data/ and the vault can never end up in the image.
+*
+!.python-version
+!pyproject.toml
+!uv.lock
+!harness
+!prompts
+!templates
+**/__pycache__
