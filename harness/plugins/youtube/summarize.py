@@ -22,6 +22,8 @@ LANGUAGE_NAMES = {
     "de": "German",
 }
 
+MAX_HIGHLIGHTS = 3
+
 
 class Timestamp(BaseModel):
     time: str
@@ -30,6 +32,8 @@ class Timestamp(BaseModel):
 
 class Summary(BaseModel):
     tldr: str
+    # Optional, because a summary without them is still worth keeping. The page falls back to key_points.
+    highlights: list[str] = []
     key_points: list[str]
     timestamps: list[Timestamp]
     tags: list[str]
@@ -85,6 +89,12 @@ def normalize_tag(tag: str) -> str:
     return re.sub(r"-{2,}", "-", tag).strip("-")
 
 
+def clean_highlights(highlights: list[str]) -> list[str]:
+    """Models sometimes add their own bullets and full stops, or write too many."""
+    cleaned = (highlight.strip(" \t\n-*•.") for highlight in highlights)
+    return [highlight for highlight in cleaned if highlight][:MAX_HIGHLIGHTS]
+
+
 class Summarizer:
     def __init__(self, summary_prompt: str, chunk_prompt: str, summary_language: str = "auto"):
         # The prompts contain $language (and $part) placeholders, filled in per call.
@@ -134,4 +144,5 @@ class Summarizer:
 
         # Normalize tags, then drop duplicates and empties while keeping their order.
         summary.tags = [tag for tag in dict.fromkeys(map(normalize_tag, summary.tags)) if tag]
+        summary.highlights = clean_highlights(summary.highlights)
         return summary

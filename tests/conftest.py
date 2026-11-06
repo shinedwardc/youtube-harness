@@ -12,6 +12,7 @@ from harness.plugins.youtube.fetch import Video
 SUMMARY_REPLY = json.dumps(
     {
         "tldr": "Raft elects a leader and replicates a log.",
+        "highlights": ["Leaders win by majority vote", "Leaders replicate the log"],
         "key_points": ["A leader is elected by majority vote.", "The leader replicates log entries."],
         "timestamps": [{"time": "00:00", "label": "Intro"}, {"time": "01:00", "label": "Leader election"}],
         "tags": ["Distributed Systems", "consensus"],

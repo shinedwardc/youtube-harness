@@ -30,7 +30,7 @@ A personal shelf of videos worth remembering, chosen by hand. It is deliberately
 ## Capabilities and Constraints
 
 - Each video has a thumbnail from YouTube, plus YouTube's three stills from within the video. YouTube offers no public animated previews.
-- A finished video has a title, channel, category, TL;DR, key points, timestamps, tags and an `obsidian://` link. An unfinished one has only its video ID and thumbnail.
+- A finished video has a title, channel, category, TL;DR, highlights (three fragments of about five words), key points, timestamps, tags and an `obsidian://` link. An unfinished one has only its video ID and thumbnail. Highlights exist only for the page and aren't written to the note.
 - Clicking a finished video opens a centred summary window over the dimmed shelf, as clicking a title on Netflix does, with its picture, TL;DR, key points and timestamps, and buttons to open its note or watch it on YouTube (owner's direction). The pop-out's Open note button goes straight to the note.
 - A failed video can be sent again. A video with no captions can't be summarized yet.
 - The page polls `GET /jobs`. Titles and errors come from YouTube and yt-dlp, so they are untrusted text.
@@ -39,6 +39,8 @@ A personal shelf of videos worth remembering, chosen by hand. It is deliberately
 
 - The overall colour scheme is light red (owner's direction).
 - Each video is its own clickable thumbnail that pops out a little on hover, as on Netflix, and plays a preview: stills cycling at once, then the real muted video where YouTube allows it (owner's direction).
+- On the shelf, each finished video shows very brief bullet points under its title with nothing hovered. Hovering shows the TL;DR as a paragraph (owner's direction).
+- Each video sits in a box the same size as every other, around its thumbnail, title and bullets. Text is never cut to fit, and spare room stays at the bottom (owner's direction).
 - The product has no logo or marketing name. The page has been titled "Video notes".
 
 ## Evidence on Hand

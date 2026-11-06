@@ -1,5 +1,7 @@
 """One call when the transcript fits, map-reduce when it doesn't, and one re-ask on bad JSON."""
 
+import json
+
 import pytest
 
 from harness.core.config import PROJECT_ROOT
@@ -76,6 +78,20 @@ def test_tags_are_normalized_for_obsidian(summarizer):
     summary = summarizer.summarize(make_video(), FakeLLM())
     assert summary.tags == ["distributed-systems", "consensus"]
     assert normalize_tag("#Machine Learning!") == "machine-learning"
+
+
+def test_highlights_are_cleaned_and_capped(summarizer):
+    reply = json.loads(SUMMARY_REPLY) | {"highlights": ["- Leader election.", " ", "• Log replication", "Safety", "Extras"]}
+    summary = summarizer.summarize(make_video(), FakeLLM([json.dumps(reply)]))
+    assert summary.highlights == ["Leader election", "Log replication", "Safety"]
+
+
+def test_a_summary_without_highlights_is_still_kept(summarizer):
+    reply = json.loads(SUMMARY_REPLY)
+    del reply["highlights"]
+    llm = FakeLLM([json.dumps(reply)])
+    assert summarizer.summarize(make_video(), llm).highlights == []
+    assert len(llm.calls) == 1
 
 
 def test_parse_summary_tolerates_fences_and_prose():
