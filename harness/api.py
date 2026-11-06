@@ -49,6 +49,7 @@ def create_app(harness: Harness | None = None, *, start_worker: bool = True) -> 
         if start_worker:
             app.state.worker.start()
         yield
+        # Docker sets SIGTERM, or uvicorn shut downs
         app.state.worker.stop()
 
     app = FastAPI(title="YouTube Summarizer Harness", lifespan=lifespan)

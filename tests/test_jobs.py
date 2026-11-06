@@ -1,11 +1,14 @@
 """Cache, queue and job outcomes, matching the MVP's "done when" checks."""
 
+import threading
 from datetime import timedelta
 
-from harness.core.jobs import Worker, run, submit
+import pytest
+
+from harness.core.jobs import Worker, run, submit, wait
 from harness.core.plugin import Unprocessable
 from harness.plugins.youtube import YouTubePlugin
-from tests.conftest import FakeLLM
+from tests.conftest import FakeLLM, abandon
 
 URL = "https://youtu.be/dQw4w9WgXcQ"
 
@@ -115,3 +118,84 @@ def test_stale_jobs_are_requeued(store, plugin):
     assert store.requeue_stale(timedelta(minutes=30)) == 0
     assert store.requeue_stale(timedelta(seconds=-1)) == 1
     assert store.get_job(job.id).status == "queued"
+
+
+def test_running_worker_recovers_an_abandoned_job_without_a_restart(store, plugin, vault):
+    worker = Worker(store=store, plugins={"youtube": plugin}, llms=[FakeLLM()], vault_dir=vault)
+    job = submit(store, plugin, URL).job
+    store.claim(job.id)
+    abandon(store, job.id)
+
+    finished = worker.run_once()
+
+    assert finished.id == job.id and finished.status == "done"
+
+
+def test_worker_leaves_a_recently_updated_job_alone(store, plugin, vault):
+    worker = Worker(store=store, plugins={"youtube": plugin}, llms=[FakeLLM()], vault_dir=vault)
+    job = submit(store, plugin, URL).job
+    store.claim(job.id)
+
+    assert worker.run_once() is None
+    assert store.get_job(job.id).status == "fetching"
+
+
+def test_wait_returns_an_abandoned_job_to_the_queue(store, plugin):
+    job = submit(store, plugin, URL).job
+    store.claim(job.id)
+    abandon(store, job.id)
+
+    assert wait(store, job.id, poll_interval=0.01).status == "queued"
+
+
+def test_wait_returns_a_finished_job(store, plugin, vault):
+    job = run_submitted(store, plugin, vault, [FakeLLM()])
+
+    assert wait(store, job.id, poll_interval=0.01).status == "done"
+
+
+def test_an_interrupted_job_is_closed_and_can_be_sent_again(store, plugin, vault):
+    def fetcher(video_id):
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        run_submitted(store, YouTubePlugin(fetcher=fetcher), vault, [FakeLLM()])
+
+    interrupted = store.get_job(1)
+    assert interrupted.status == "failed"
+    assert interrupted.error == "Interrupted before finishing"
+
+    retried = run_submitted(store, plugin, vault, [FakeLLM()])
+    assert retried.id != interrupted.id and retried.status == "done"
+
+
+def test_shutdown_requeues_the_job_still_running(store, vault):
+    started, release = threading.Event(), threading.Event()
+
+    def fetcher(video_id):
+        started.set()
+        release.wait(5)
+        raise RuntimeError("released by the test")
+
+    plugin = YouTubePlugin(fetcher=fetcher)
+    job = submit(store, plugin, URL).job
+    worker = Worker(store=store, plugins={"youtube": plugin}, llms=[FakeLLM()], vault_dir=vault, poll_interval=0.01)
+    worker.start()
+    assert started.wait(5)
+
+    worker.stop(timeout=0.01)
+    status_after_stop = store.get_job(job.id).status
+
+    release.set()
+    worker._thread.join(5)
+    assert status_after_stop == "queued"
+
+
+def test_shutdown_leaves_a_finished_job_alone(store, plugin, vault):
+    job = run_submitted(store, plugin, vault, [FakeLLM()])
+    worker = Worker(store=store, plugins={"youtube": plugin}, llms=[FakeLLM()], vault_dir=vault, poll_interval=0.01)
+    worker.start()
+
+    worker.stop()
+
+    assert store.get_job(job.id).status == "done"

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
-from .db import ACTIVE_STATUSES, Job, Store, Summary
+from .db import Job, Store, Summary
 from .llm import LLM, LLMUnavailable
 from .plugin import Plugin, Unprocessable
 
@@ -35,7 +35,10 @@ def submit(store: Store, plugin: Plugin, raw: str) -> Submission:
 
 
 def run(job: Job, *, store: Store, plugin: Plugin, llms: Sequence[LLM], vault_dir: Path) -> Job:
-    """Take a claimed job through fetch, summarize and write. Never raises; the outcome is in the job."""
+    """Take a claimed job through fetch, summarize and write.
+
+    The outcome is in the job. Only an interrupt (Ctrl+C) raises, once the job is closed.
+    """
     try:
         cached = store.get_summary(plugin.name, job.item_id)
         if cached is not None:
@@ -60,6 +63,10 @@ def run(job: Job, *, store: Store, plugin: Plugin, llms: Sequence[LLM], vault_di
     except Exception as error:
         log.exception("Job %d failed", job.id, extra={"outcome": True})
         store.set_status(job.id, "failed", error=f"{type(error).__name__}: {error}")
+    except (KeyboardInterrupt, SystemExit):
+        # Not `Exception`s, but the job won't finish; left open it would look busy and block a resend.
+        store.set_status(job.id, "failed", error="Interrupted before finishing")
+        raise
     return store.get_job(job.id)
 
 
@@ -77,10 +84,12 @@ def _summarize(plugin: Plugin, source, llms: Sequence[LLM]) -> dict:
 
 
 def wait(store: Store, job_id: int, *, poll_interval: float = 1.0) -> Job:
-    """Block until a job another process is running finishes."""
+    """Block until a job another process is running finishes, or is back in the queue to be claimed."""
     while True:
+        # That process may have died, and with no server running nothing else would notice.
+        store.requeue_stale(STALE_AFTER)
         job = store.get_job(job_id)
-        if job.status not in ACTIVE_STATUSES:
+        if job.finished or job.status == "queued":
             return job
         time.sleep(poll_interval)
 
@@ -104,9 +113,13 @@ class Worker:
         self.poll_interval = poll_interval
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._running: Job | None = None
 
     def run_once(self) -> Job | None:
-        """Run the oldest queued job, if any. Returns it once finished."""
+        """Recover abandoned jobs, then run the oldest queued job, if any. Returns it once finished."""
+        requeued = self.store.requeue_stale(STALE_AFTER)
+        if requeued:
+            log.info("Requeued %d stale job(s)", requeued)
         job = self.store.claim()
         if job is None:
             return None
@@ -114,19 +127,27 @@ class Worker:
         if plugin is None:
             self.store.set_status(job.id, "failed", error=f"No plugin named {job.plugin!r}")
             return self.store.get_job(job.id)
-        return run(job, store=self.store, plugin=plugin, llms=self.llms, vault_dir=self.vault_dir)
+        self._running = job
+        try:
+            return run(job, store=self.store, plugin=plugin, llms=self.llms, vault_dir=self.vault_dir)
+        finally:
+            self._running = None
 
     def start(self) -> None:
-        requeued = self.store.requeue_stale(STALE_AFTER)
-        if requeued:
-            log.info("Requeued %d stale job(s)", requeued)
         self._thread = threading.Thread(target=self._loop, name="harness-worker", daemon=True)
         self._thread.start()
 
     def stop(self, timeout: float = 5.0) -> None:
         self._stop.set()
-        if self._thread is not None:
-            self._thread.join(timeout)
+        if self._thread is None:
+            return
+        # Wait up to (default = 5) seconds for the job to finish
+        self._thread.join(timeout)
+        # Still mid-job, and the thread dies with the process. Requeue it so the next start picks it up.
+        running = self._running
+        if self._thread.is_alive() and running is not None:
+            self.store.set_status(running.id, "queued") # The next start picks up straight away
+            log.info("Requeued job %d, interrupted by shutdown", running.id)
 
     def _loop(self) -> None:
         while not self._stop.is_set():

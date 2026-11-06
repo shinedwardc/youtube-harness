@@ -52,6 +52,12 @@ def make_video(video_id="dQw4w9WgXcQ", *, language="en", transcript=None, title=
     )
 
 
+def abandon(store, job_id):
+    """Make a claimed job look as if its process died long ago."""
+    with store._connect() as conn:
+        conn.execute("UPDATE jobs SET updated_at = '2000-01-01T00:00:00+00:00' WHERE id = ?", (job_id,))
+
+
 @pytest.fixture
 def store(tmp_path):
     return Store(tmp_path / "harness.db")

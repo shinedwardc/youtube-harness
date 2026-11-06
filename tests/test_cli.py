@@ -10,7 +10,7 @@ from harness.core.config import Settings
 from harness.core.llm import ConfigError
 from harness.core.plugin import Unprocessable
 from harness.plugins.youtube import YouTubePlugin
-from tests.conftest import FakeLLM
+from tests.conftest import FakeLLM, abandon
 
 URL = "https://youtu.be/dQw4w9WgXcQ"
 
@@ -96,6 +96,35 @@ def test_verbose_failure_shows_the_traceback(use_harness, capsys):
     cli.main(["-v", URL])
 
     assert "Traceback" in capsys.readouterr().err
+
+
+def test_takes_over_a_job_abandoned_by_a_dead_process(use_harness, plugin, store, capsys):
+    use_harness(plugin)
+    job = store.create_job("youtube", "dQw4w9WgXcQ", URL)
+    store.claim(job.id)
+    abandon(store, job.id)
+
+    assert cli.main([URL]) == cli.EXIT_DONE
+
+    assert store.get_job(job.id).status == "done"
+    assert "already running elsewhere" in capsys.readouterr().err
+
+
+def test_ctrl_c_exits_cleanly_and_the_link_can_be_sent_again(use_harness, plugin, capsys):
+    def fetcher(video_id):
+        raise KeyboardInterrupt
+
+    use_harness(YouTubePlugin(fetcher=fetcher))
+
+    assert cli.main([URL]) == cli.EXIT_INTERRUPTED
+
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "✗ Interrupted" in err
+    assert "Traceback" not in err
+
+    use_harness(plugin)
+    assert cli.main([URL]) == cli.EXIT_DONE
 
 
 def test_invalid_link_exits_1(use_harness, plugin, capsys):

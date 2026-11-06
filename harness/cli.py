@@ -12,12 +12,14 @@ import time
 from dotenv import load_dotenv
 
 from .bootstrap import build
-from .core.jobs import run, submit, wait
+from .core.jobs import STALE_AFTER, run, submit, wait
 from .core.llm import ConfigError
 
 EXIT_DONE = 0
 EXIT_FAILED = 1
 EXIT_NEEDS_TRANSCRIPTION = 2
+# The shell convention for a process stopped by Ctrl+C (128 + SIGINT).
+EXIT_INTERRUPTED = 130
 
 # ANSI colour codes.
 RED, GREEN, YELLOW, CYAN, DIM = "31", "32", "33", "36", "2"
@@ -112,13 +114,24 @@ def main(argv: list[str] | None = None) -> int:
         print(vault_dir / submission.summary.note_path)
         return EXIT_DONE
 
-    job = harness.store.claim(submission.job.id)
-    if job is None:
-        # The server's worker (or another yt-sum) has it already.
-        say("…", CYAN, f"Job {submission.job.id} is already running elsewhere; waiting for it")
-        job = wait(harness.store, submission.job.id)
-    else:
-        job = run(job, store=harness.store, plugin=plugin, llms=harness.llms, vault_dir=vault_dir)
+    job_id = submission.job.id
+    try:
+        while True:
+            job = harness.store.claim(job_id)
+            if job is not None:
+                job = run(job, store=harness.store, plugin=plugin, llms=harness.llms, vault_dir=vault_dir)
+                break
+            # The server's worker (or another yt-sum) has it already. If that process died,
+            # wait() puts the job back in the queue and this loop claims it.
+            minutes = int(STALE_AFTER.total_seconds() // 60)
+            say("…", CYAN, f"Job {job_id} is already running elsewhere; waiting for it")
+            print("  " + paint(f"If that process died, this run takes over within {minutes} minutes.", DIM), file=sys.stderr)
+            job = wait(harness.store, job_id)
+            if job.finished:
+                break
+    except KeyboardInterrupt:
+        say("✗", RED, paint("Interrupted", RED))
+        return EXIT_INTERRUPTED
 
     elapsed = time.monotonic() - started
     if job.status == "done":
