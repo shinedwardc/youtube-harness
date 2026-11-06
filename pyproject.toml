@@ -23,10 +23,14 @@ build-backend = "hatchling.build"
 dev = [
     "httpx>=0.28.1",
     "pytest>=9.2.0",
+    "pytest-playwright>=0.10.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# A failed browser test leaves a screenshot of the page in test-results/.
+addopts = "--screenshot=only-on-failure --output=test-results"
+markers = ["browser: drives the web page in a headless browser"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["harness"]
