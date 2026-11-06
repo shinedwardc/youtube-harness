@@ -15,13 +15,18 @@ class Settings:
     # "auto" summarizes in the language of the captions; a code such as "en" forces one.
     summary_language: str
     poll_interval: float
+    # The name Obsidian knows the vault by, for links that open a note.
+    vault_name: str = "vault"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
         env = os.environ if env is None else env
+        vault_dir = Path(env.get("HARNESS_VAULT_DIR") or PROJECT_ROOT / "vault")
         return cls(
-            vault_dir=Path(env.get("HARNESS_VAULT_DIR") or PROJECT_ROOT / "vault"),
+            vault_dir=vault_dir,
             db_path=Path(env.get("HARNESS_DB_PATH") or PROJECT_ROOT / "data" / "harness.db"),
             summary_language=env.get("HARNESS_SUMMARY_LANGUAGE") or "auto",
             poll_interval=float(env.get("HARNESS_POLL_INTERVAL") or 1.0),
+            # Set it when the folder has another name here, as a vault mounted into a container does.
+            vault_name=env.get("HARNESS_VAULT_NAME") or vault_dir.name,
         )

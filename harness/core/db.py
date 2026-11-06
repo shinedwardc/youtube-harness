@@ -101,6 +101,15 @@ class Store:
             return None
         return Summary(**{**dict(row), "data": json.loads(row["data"])})
 
+    def summaries(self) -> dict[tuple[str, str], Summary]:
+        """Every summary, keyed by plugin and item. One query, for listing many jobs at once."""
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM summaries").fetchall()
+        return {
+            (row["plugin"], row["item_id"]): Summary(**{**dict(row), "data": json.loads(row["data"])})
+            for row in rows
+        }
+
     # --- jobs ---
 
     def create_job(self, plugin: str, item_id: str, raw_input: str) -> Job:
@@ -133,6 +142,12 @@ class Store:
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return Job(**row) if row else None
+
+    def recent_jobs(self, limit: int) -> list[Job]:
+        """The newest jobs first."""
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM jobs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [Job(**row) for row in rows]
 
     def claim(self, job_id: int | None = None) -> Job | None:
         """Atomically move a queued job to `fetching`. Two processes can never claim the same job."""
