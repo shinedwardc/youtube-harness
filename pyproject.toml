@@ -1,0 +1,32 @@
+[project]
+name = "youtube-harness"
+version = "0.1.0"
+description = "Turns a YouTube link into a summary note in an Obsidian vault, and never summarizes the same video twice."
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.162.0",
+    "openai>=3.42.1",
+    "pydantic>=2.14.2",
+    "python-dotenv>=1.2.4",
+    "uvicorn>=0.54.0",
+    "yt-dlp>=2026.10.26",
+]
+
+[project.scripts]
+yt-sum = "harness.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["harness"]

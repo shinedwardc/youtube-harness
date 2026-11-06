@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+
+# Runtime data: the SQLite database and the notes the harness writes
+data/
+vault/
+
+# Windows download markers
+*:Zone.Identifier
+
+# Claude Code local config
+.claude/
+
+documents/
