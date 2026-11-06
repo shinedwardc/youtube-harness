@@ -418,6 +418,159 @@
 
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
 
+  /* --- The summary window --- */
+
+  /* A modal <dialog>, so the browser keeps it on top, makes the page behind it inert and handles Escape. */
+  .details {
+    width: min(52rem, 100vw - 2rem);
+    max-width: none;
+    max-height: calc(100dvh - 4rem);
+    margin: auto;
+    border: 0;
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--surface);
+    color: var(--ink);
+    /* Korean wraps between words here, not mid-word. Only something too long to fit gets broken. */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .details[open] {
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.14s linear, transform 0.26s var(--out);
+  }
+
+  .details[open]::backdrop {
+    background: rgba(58, 20, 23, 0.62);
+    transition: background-color 0.2s linear;
+  }
+
+  @starting-style {
+    .details[open] { opacity: 0; transform: translateY(1rem) scale(0.98); }
+    .details[open]::backdrop { background: transparent; }
+  }
+
+  /* The page behind stays put. The body makes up for the scrollbar, so nothing shifts when it goes. */
+  html:has(.details[open]) { overflow: hidden; }
+  html:has(.details[open]) body { padding-right: var(--scrollbar-width, 0); }
+
+  .details-scroll {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: #e08f86 var(--surface);
+  }
+
+  /* Capped by the window's height, so the summary still starts on screen. */
+  .details-media {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 42vh;
+    overflow: hidden;
+    background: var(--line);
+  }
+
+  /* Cropped mostly from the bottom, since thumbnails tend to carry their words near the top. */
+  .details-media img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
+  .details-media img.missing { visibility: hidden; }
+
+  .details-close {
+    position: absolute;
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: 0.75rem;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    padding: 0;
+    background: var(--surface);
+    color: var(--ink);
+    transition: background-color 0.12s, color 0.12s;
+  }
+
+  .details-close svg { width: 1.25rem; height: 1.25rem; }
+  .details-close:hover { background: var(--action); color: #fff; }
+  .details-close:focus-visible { border-radius: 50%; }
+
+  .details-body { padding: 1.25rem 1.5rem 1.5rem; }
+
+  .details h2 {
+    margin: 0 0 0.375rem;
+    font-size: 1.625rem;
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .details .meta { margin-bottom: 1.25rem; }
+
+  /* The summary beside its timestamps and tags, stacking when there's no room for both. */
+  .details-columns { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; }
+  .details-main { flex: 3 1 24rem; min-width: 0; }
+  .details-side { display: grid; flex: 1 1 15rem; gap: 1.5rem; align-content: start; min-width: 0; }
+
+  .details-tldr { margin: 0; font-size: 1.125rem; text-wrap: pretty; }
+
+  .details h3 {
+    margin: 1.5rem 0 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+  }
+
+  .details-side h3 { margin-top: 0; }
+
+  .points { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.125rem; }
+  .points li { padding-left: 0.125rem; text-wrap: pretty; }
+  .points li::marker { color: var(--soft); }
+
+  /* The times share a column, so the labels start on one edge whatever length the times are. */
+  .times {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    margin: 0 0 0 -0.375rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .times li,
+  .times a,
+  .times .plain {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+  }
+
+  .times a,
+  .times .plain { column-gap: 0.75rem; border-radius: 4px; padding: 0.25rem 0.375rem; text-decoration: none; }
+  .times a:hover .time-label { text-decoration: underline; }
+
+  .time { color: var(--action-deep); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .details .tags { margin: 0; }
+
+  .details-actions {
+    flex: none;
+    border-top: 1px solid var(--line);
+    padding: 0.875rem 1.5rem max(0.875rem, env(safe-area-inset-bottom));
+  }
+
+  /* Phones get the whole screen. */
+  @media (max-width: 40rem) {
+    .details { width: 100%; height: 100dvh; max-height: none; border-radius: 0; }
+    .details-scroll { flex: 1 1 auto; }
+  }
+
   /* --- Everything around the shelf --- */
 
   .notice { max-width: 34rem; margin: 2rem var(--gutter); color: var(--soft); font-size: 1.125rem; text-wrap: pretty; }
@@ -447,7 +600,7 @@
 
   [hidden] { display: none !important; }
 
-  /* --- Without a mouse there's no hover: a tap opens the note, and the summary sits under the title. --- */
+  /* --- Without a mouse there's no hover: a tap opens the summary window, with the TL;DR near its top. --- */
 
   @media (hover: none), (pointer: coarse) {
     .rest-tldr:not(:empty) { display: -webkit-box; }
@@ -470,7 +623,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .card, .thumb img, .progress i, .media img.on, .player, .bar, .arrow { transition: none; }
+    .card, .thumb img, .progress i, .media img.on, .player, .bar, .arrow, .details[open], .details[open]::backdrop { transition: none; }
     .thumb:hover img { transform: none; }
   }
 </style>
@@ -494,6 +647,39 @@
   <p class="notice" id="nomatch" hidden><span id="nomatch-text"></span> <button id="clear" type="button">Clear search</button></p>
   <div id="shelf"></div>
 </main>
+
+<dialog class="details" id="details" aria-labelledby="details-title">
+  <button class="details-close" id="details-close" type="button" aria-label="Close">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+  </button>
+  <div class="details-scroll">
+    <a class="details-media" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"></a>
+    <div class="details-body">
+      <h2 id="details-title"></h2>
+      <p class="meta"><span class="category"></span><span class="by"></span><span class="when"></span></p>
+      <div class="details-columns">
+        <div class="details-main">
+          <p class="details-tldr"></p>
+          <section class="details-points">
+            <h3>Key points</h3>
+            <ul class="points"></ul>
+          </section>
+        </div>
+        <div class="details-side">
+          <section class="details-times">
+            <h3>Timestamps</h3>
+            <ol class="times"></ol>
+          </section>
+          <ul class="tags"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="actions details-actions">
+    <a class="press open-note">Open note</a>
+    <a class="watch" target="_blank" rel="noopener">Watch on YouTube</a>
+  </div>
+</dialog>
 
 <div class="toast" id="message" role="status"></div>
 
@@ -593,11 +779,13 @@
   const nomatch = byId("nomatch");
   const shelf = byId("shelf");
   const bar = byId("bar");
+  const details = byId("details");
   const template = byId("tile");
   const rowTemplate = byId("row");
 
   // One element per video. Keeping it between checks means nothing reloads or loses focus.
   const elements = new Map();
+  const jobs = new Map();
   // One row per month, plus one for what has no summary date yet.
   const rows = new Map();
   const NOT_SUMMARIZED = "not-summarized";
@@ -831,20 +1019,126 @@
     if (openTile) stopPlayer(openTile);
   }
 
+  // --- The summary window: everything the summary says, without leaving the page ---
+
+  let detailsTile = null;
+  // The tile just clicked. The pointer is still on it, and the card shouldn't pop straight back open.
+  let quietTile = null;
+  let returningFocus = false;
+
+  // A time the model wrote oddly stays plain text, the same as in the note.
+  function secondsFrom(time) {
+    if (!/^\d+(:\d{1,2}){1,2}$/.test(time)) return null;
+    return time.split(":").reduce((total, part) => total * 60 + Number(part), 0);
+  }
+
+  function timestampItem(videoId, { time, label }) {
+    const item = document.createElement("li");
+    const seconds = secondsFrom(time);
+    const row = document.createElement(seconds === null ? "div" : "a");
+    if (seconds === null) {
+      row.className = "plain";
+    } else {
+      row.href = `${watchUrl(videoId)}&t=${seconds}s`;
+      row.target = "_blank";
+      row.rel = "noopener";
+    }
+    row.append(
+      Object.assign(document.createElement("span"), { className: "time", textContent: time }),
+      Object.assign(document.createElement("span"), { className: "time-label", textContent: label }),
+    );
+    item.append(row);
+    return item;
+  }
+
+  function fillDetails(job) {
+    const part = (selector) => details.querySelector(selector);
+    const listOf = (items) => items.map((text) => Object.assign(document.createElement("li"), { textContent: text }));
+
+    // Shown large, so it asks for YouTube's sharpest picture first, which not every video has.
+    let fallback = still(job.video_id, "hqdefault");
+    const picture = Object.assign(new Image(), { alt: "", src: still(job.video_id, "maxresdefault") });
+    const tryFallback = () => {
+      if (fallback) picture.src = fallback;
+      else picture.classList.add("missing");
+      fallback = null;
+    };
+    picture.onload = () => { if (isPlaceholder(picture)) tryFallback(); };
+    picture.onerror = tryFallback;
+    part(".details-media").replaceChildren(picture);
+    part(".details-media").href = watchUrl(job.video_id);
+
+    part("h2").textContent = job.title || `youtu.be/${job.video_id}`;
+    fill(part(".category"), job.category);
+    fill(part(".by"), job.channel);
+    fill(part(".when"), `Summarized ${timeAgo(job.updated_at)}`);
+    fill(part(".details-tldr"), job.tldr);
+
+    part(".points").replaceChildren(...listOf(job.key_points));
+    part(".details-points").hidden = job.key_points.length === 0;
+    part(".times").replaceChildren(...job.timestamps.map((stamp) => timestampItem(job.video_id, stamp)));
+    part(".details-times").hidden = job.timestamps.length === 0;
+    part(".tags").replaceChildren(...listOf(job.tags));
+    part(".tags").hidden = job.tags.length === 0;
+    part(".details-side").hidden = job.timestamps.length === 0 && job.tags.length === 0;
+
+    part(".open-note").href = job.note_url;
+    part(".watch").href = watchUrl(job.video_id);
+    part(".details-scroll").scrollTop = 0;
+  }
+
+  function openDetails(tile) {
+    close();
+    quietTile = tile;
+    // An entry in the history, so Back closes the window instead of leaving the page.
+    history.pushState({ details: true }, "");
+    detailsTile = tile;
+    fillDetails(jobs.get(tile.dataset.video));
+    const root = document.documentElement;
+    root.style.setProperty("--scrollbar-width", `${innerWidth - root.clientWidth}px`);
+    details.showModal();
+  }
+
+  function hideDetails() {
+    if (!detailsTile) return;
+    const tile = detailsTile;
+    detailsTile = null;
+    // Back on the video it came from, without that focus opening the pop-out again.
+    // The flag goes up first because closing a dialog restores focus by itself.
+    returningFocus = true;
+    details.close();
+    tile.querySelector(".title-link").focus({ preventScroll: true });
+    returningFocus = false;
+  }
+
+  function closeDetails() {
+    if (history.state?.details) history.back();
+    else hideDetails();
+  }
+
   function wire(tile) {
     tile.querySelector(".thumb").addEventListener("mouseenter", () => {
-      if (!canHover.matches) return;
+      if (!canHover.matches || quietTile === tile) return;
       clearTimeout(closeTimer);
       clearTimeout(openTimer);
       openTimer = setTimeout(() => open(tile), HOVER_INTENT_MS);
     });
     tile.addEventListener("mouseleave", () => {
+      if (quietTile === tile) quietTile = null;
       clearTimeout(openTimer);
       if (openTile === tile) closeTimer = setTimeout(close, CLOSE_GRACE_MS);
     });
+    // A finished video opens the panel. Holding a modifier key follows the link to the note instead.
+    [".thumb", ".title-link", ".media", ".card-link"].forEach((selector) => {
+      tile.querySelector(selector).addEventListener("click", (event) => {
+        if (tile.dataset.status !== "done" || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        openDetails(tile);
+      });
+    });
     // Keyboard users get the same card, and can tab into its links.
     tile.querySelector(".title-link").addEventListener("focus", (event) => {
-      if (canHover.matches && event.target.matches(":focus-visible")) open(tile);
+      if (canHover.matches && !returningFocus && event.target.matches(":focus-visible")) open(tile);
     });
     tile.addEventListener("focusout", (event) => {
       if (openTile === tile && !tile.contains(event.relatedTarget) && !tile.matches(":hover")) close();
@@ -904,11 +1198,19 @@
     const title = job.title || `youtu.be/${job.video_id}`;
     const state = job.status === "done" ? "" : STATES[job.status] || job.status;
 
+    jobs.set(job.video_id, job);
     tile.dataset.status = job.status;
     tile.dataset.input = job.input;
-    tile.dataset.search = [title, job.channel, job.category, job.tldr, ...job.tags].join(" ").toLowerCase();
+    tile.dataset.search = [
+      title, job.channel, job.category, job.tldr, ...job.tags, ...job.key_points,
+      ...job.timestamps.map((stamp) => stamp.label),
+    ].join(" ").toLowerCase();
 
     [part(".thumb"), part(".title-link"), part(".media"), part(".card-link")].forEach((link) => linkTo(link, job));
+    [part(".title-link"), part(".card-link")].forEach((link) => {
+      if (job.status === "done") link.setAttribute("aria-haspopup", "dialog");
+      else link.removeAttribute("aria-haspopup");
+    });
     part(".title-link").textContent = title;
     part(".card-link").textContent = title;
 
@@ -998,16 +1300,17 @@
     if (!nomatch.hidden) byId("nomatch-text").textContent = `No videos match “${search.value.trim()}”.`;
   }
 
-  function render(jobs) {
+  function render(fetched) {
     // The newest job for a video is the one that counts: a retry replaces the failure before it.
     const latest = new Map();
-    for (const job of jobs) if (!latest.has(job.video_id)) latest.set(job.video_id, job);
+    for (const job of fetched) if (!latest.has(job.video_id)) latest.set(job.video_id, job);
 
     for (const [videoId, tile] of elements) {
       if (!latest.has(videoId)) {
         if (openTile === tile) close();
         tile.remove();
         elements.delete(videoId);
+        jobs.delete(videoId);
       }
     }
 
@@ -1050,6 +1353,8 @@
 
     applySearch();
     if (openTile) place(openTile);
+    // The window keeps what it's showing between checks, unless that video is gone.
+    if (detailsTile && jobs.get(detailsTile.dataset.video)?.status !== "done") closeDetails();
     empty.hidden = latest.size > 0;
     return [...latest.values()].some((job) => ACTIVE.has(job.status));
   }
@@ -1129,6 +1434,17 @@
 
   search.addEventListener("input", () => { close(); applySearch(); });
   byId("clear").addEventListener("click", () => { search.value = ""; applySearch(); search.focus(); });
+
+  byId("details-close").addEventListener("click", closeDetails);
+  // The browser closes the window itself on Escape, and this tidies up after it.
+  details.addEventListener("close", closeDetails);
+  // A click on the dimmed page closes it, unless the press began inside: selecting text can end out there.
+  let pressedOutside = false;
+  details.addEventListener("pointerdown", (event) => { pressedOutside = event.target === details; });
+  details.addEventListener("click", (event) => { if (pressedOutside && event.target === details) closeDetails(); });
+  addEventListener("popstate", () => { if (!history.state?.details) hideDetails(); });
+  // A reload starts with the window closed, so forget that it was open.
+  if (history.state?.details) history.replaceState(null, "");
 
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
   // Capturing, because a row's own scrolling doesn't bubble up to the window.

@@ -123,6 +123,12 @@ components:
     padding: "1rem 1.25rem 1.25rem"
   popout-media:
     backgroundColor: "{colors.ink}"
+  summary-window:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.card}"
+    padding: "1.25rem 1.5rem 1.5rem"
+    width: "min(52rem, 100vw - 2rem)"
   toast:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.surface}"
@@ -151,14 +157,15 @@ Confirmed rejections come from the chosen direction: a page led by the paste box
 - Flat by decision, with a single shadow on the pop-out card.
 - Rows by the month a video was summarized, with unfinished work first.
 - A pop-out that grows from the thumbnail's exact position and previews the video.
+- A flat summary window centred over the dimmed shelf, holding the whole summary.
 
 ## Colors
 
 A single warm red family from pale ground to oxblood ink, with no second hue; colour variety comes only from the video pictures.
 
 ### Primary
-- **Action Red** (#dc2f35): The fill on pressable buttons (Add, Open note, Try again in the card), on an arrow under the pointer, and on the job progress bar. Also the text caret and the selection highlight.
-- **Action Deep** (#b81f25): Action Red's darker step. The hover fill on buttons, every piece of red text (category, failed and no-captions states, text-sized actions such as Try again and Clear search), the 2px focus ring, and the problem toast.
+- **Action Red** (#dc2f35): The fill on pressable buttons (Add, Open note, Try again in the card), on an arrow or the window's close button under the pointer, and on the job progress bar. Also the text caret and the selection highlight.
+- **Action Deep** (#b81f25): Action Red's darker step. The hover fill on buttons, every piece of red text (category, timestamp times, failed and no-captions states, text-sized actions such as Try again and Clear search), the 2px focus ring, and the problem toast.
 - **Brand Red** (#c8242a): The "Video notes" title in the bar, and nothing else.
 
 ### Neutral
@@ -166,7 +173,7 @@ A single warm red family from pale ground to oxblood ink, with no second hue; co
 - **Warm Near-White** (#fff5f3): Raised or typed-into surfaces: the two fields, the pop-out card, and the row arrows at rest. Also the toast's text.
 - **Oxblood Ink** (#3a1417): Headings and body text. Also the toast background and the card's picture frame before a picture loads.
 - **Soft Ink** (#7b4044): Secondary text: channel, counts, job states, tags, placeholders, the search icon, and Watch links.
-- **Blush Line** (#f0b4ab): The bar's hairline once the page has scrolled, the arrow's border, and the stand-in behind a thumbnail with no picture.
+- **Blush Line** (#f0b4ab): The bar's hairline once the page has scrolled, the hairline above the window's buttons, the arrow's and close button's border, and the stand-in behind a thumbnail with no picture.
 - **Pure White** (#ffffff): Text and chevrons on Action Red and Action Deep fills, where it holds 4.67:1 and 6.44:1, and the toast's link.
 
 ### Named Rules
@@ -185,10 +192,10 @@ A single warm red family from pale ground to oxblood ink, with no second hue; co
 ### Hierarchy
 - **Display** (700, 1.875rem, line-height 1, -0.015em; 1.5rem on phones): The "Video notes" title in the bar.
 - **Headline** (700, 1.75rem, line-height 1.15, -0.015em; 1.3125rem on phones): Row headings such as "November 2026".
-- **Title Card** (700, 1.625rem, line-height 1.08, -0.015em): The video title in the pop-out, balanced and clamped to three lines.
+- **Title Card** (700, 1.625rem, line-height 1.08, -0.015em): The video title in the pop-out, balanced and clamped to three lines, and in the summary window, balanced and never clamped.
 - **Title** (700, 1.125rem, line-height 1.2, -0.005em): The video title under a thumbnail, clamped to two lines.
-- **Body Large** (400, 1.125rem, line-height 1.45): Empty and no-match notices, limited to 34rem.
-- **Body** (400, 1rem, line-height 1.45): Channel, TL;DR in the card, counts with tabular figures, and field text.
+- **Body Large** (400, 1.125rem, line-height 1.45): The TL;DR in the summary window, and empty and no-match notices, limited to 34rem.
+- **Body** (400, 1rem, line-height 1.45): Channel, TL;DR in the card, key points and timestamp labels in the window, counts and timestamp times with tabular figures, and field text.
 - **Body Small** (400, 0.9375rem, line-height 1.45): The failure reason under a tile, and the summary shown under a tile on touch devices.
 - **Caption** (400, 0.875rem, line-height 1.45): Tags, in Soft Ink, as a plain spaced run of words with no chips.
 - **Label** (600, 1rem, line-height 1.25): Button text. Job states, the category and text-sized actions use the same weight at the body line-height.
@@ -221,7 +228,7 @@ Flat by decision, with one exception. Only the pop-out card carries a shadow; th
 - **Pop-out lift** (`box-shadow: 0 24px 48px rgba(90, 20, 26, 0.34), 0 4px 12px rgba(90, 20, 26, 0.16)`): The pop-out card only. A wide soft layer for lift and a tight layer for contact.
 
 ### Named Rules
-**The One Lift Rule.** If it isn't the pop-out card, it has no shadow. The fixed toast and the sticky bar are not exceptions.
+**The One Lift Rule.** If it isn't the pop-out card, it has no shadow. The fixed toast, the sticky bar and the summary window are not exceptions. The window stands out through the dimmed page around it.
 
 ## Shapes
 
@@ -250,6 +257,7 @@ The bar is the only navigation: title, search and paste field. Row arrows are 2.
 - **Picture:** 16:9, 8px corners, with a Blush Line stand-in when YouTube has no real picture. The image scales to 1.04 under the pointer in 0.28s, answering during the moment before the card opens.
 - **Text:** Title beneath, then the channel in Soft Ink. An unfinished video shows its job state instead, in Soft Ink at weight 600, or Action Deep when it is stuck, with the reason clamped to one line.
 - **Progress:** A running job shows a 5px Action Red bar along the thumbnail's bottom edge on a 55% near-white track, the way a streaming service shows watch progress. Stages fill it to 6%, 30%, 65% and 92%, easing over 0.9s.
+- **Clicking:** A finished video's picture and title, on the tile or in the pop-out, open the summary window. With a modifier key they follow the link to the note. An unfinished video's links go to YouTube.
 
 ### Pop-out Card
 The signature, pinned by the owner: the thumbnail itself grows into a card.
@@ -264,6 +272,16 @@ The signature, pinned by the owner: the thumbnail itself grows into a card.
 - **Then video:** The muted video starts hidden 0.3s in, with no controls. It stays hidden for 4s after it begins playing, until YouTube's title and icons have cleared, then fades in over 0.4s and the stills stop. Videos over two minutes skip their first 15%.
 - **If it can't play:** A channel that blocks embedding, or a player that won't load, leaves the stills running with no message.
 - **Reduced motion:** Stops all of it. The card opens at once with its first still and plays nothing, and the card's growth, the thumbnail zoom and smooth row scrolling go too.
+
+### Summary Window
+The rest of the summary, for remembering a video properly without leaving the page. Chosen by the owner to work like clicking a title on Netflix. Quiet on purpose: it has no video of its own, and the pop-out keeps the page's one real moment of movement.
+- **Placement:** A modal window centred on the screen, up to 52rem wide and 4rem shorter than the window, over the page dimmed with 62% Oxblood Ink. The page behind it can't be reached or scrolled and doesn't move. At 40rem and under it takes the whole screen.
+- **Contents:** A 16:9 still filling the top edge to edge and linking to YouTube, using YouTube's sharpest picture where there is one. It is capped at 42% of the screen's height and cropped mostly from the bottom, since thumbnails carry their words near the top. Then the Title Card with category, channel and date. Below that, the TL;DR in Body Large and Key points sit in a wide column, with Timestamps and tags in a narrower one beside it, stacking when there's no room for both. A section with nothing in it is left out, and with no timestamps or tags the summary takes the full width. Open note and Watch on YouTube stay pinned to the bottom, above a Blush Line hairline.
+- **Timestamps:** Times in Action Deep with tabular figures, in one column, each row linking to that second on YouTube. A time that can't be read stays plain text, as it does in the note.
+- **Text:** Korean wraps between words (`word-break: keep-all`), and only something too long to fit is broken.
+- **Close button:** A 2.75rem Warm Near-White circle with a Blush Line border, styled like the row arrows, fixed to the top-right corner while the window scrolls.
+- **Opening:** Fades in over 0.14s while rising 1rem and growing from 98% over 0.26s, as the page dims over 0.2s. It closes at once. Reduced motion removes all of it.
+- **Closing and focus:** The close button, Escape, the browser's Back, or a click on the dimmed page, though not a text selection that ends out there. Opening moves focus to the close button, and closing returns it to the video's title without reopening the pop-out. Checking for new jobs never resets what's being read.
 
 ### Toast
 Bottom-centre and flat, with 8px corners and 0.75rem by 1.125rem padding. Oxblood Ink with Warm Near-White text for news, Action Deep with white text for a problem, and an optional Open note link at weight 600.

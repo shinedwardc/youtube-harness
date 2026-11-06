@@ -43,6 +43,8 @@ def job_json(job: Job, harness: Harness, summary: Summary | None = None) -> dict
         "channel": data.get("channel"),
         "category": data.get("category"),
         "tldr": data.get("tldr"),
+        "key_points": data.get("key_points", []),
+        "timestamps": data.get("timestamps", []),
         "tags": data.get("tags", []),
         "summarized": data.get("summarized"),
         "note_path": job.note_path,

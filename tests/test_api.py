@@ -91,6 +91,7 @@ def test_a_queued_job_has_no_title_or_note_link_yet(client):
     assert job["input"] == URL
     assert job["title"] is None and job["channel"] is None and job["note_url"] is None
     assert job["category"] is None and job["tldr"] is None and job["tags"] == []
+    assert job["key_points"] == [] and job["timestamps"] == []
     assert job["summarized"] is None
 
 
@@ -105,6 +106,9 @@ def test_a_finished_job_has_its_title_and_an_obsidian_link(client):
     assert job["category"] == "Education"
     assert job["tldr"] == "Raft elects a leader and replicates a log."
     assert job["tags"] == ["distributed-systems", "consensus"]
+    # The page's detail panel shows all of these without opening the note.
+    assert job["key_points"] == ["A leader is elected by majority vote.", "The leader replicates log entries."]
+    assert job["timestamps"] == [{"time": "00:00", "label": "Intro"}, {"time": "01:00", "label": "Leader election"}]
     month_folder = job["note_path"].split("/")[1]
     # The page's month rows and the vault's month folders come from the same date.
     assert job["summarized"].startswith(month_folder)
