@@ -65,11 +65,15 @@ def test_slug_is_filesystem_safe_and_keeps_hangul():
     assert slugify("???") == "video"
 
 
-def test_writes_into_the_youtube_folder(tmp_path):
+def test_writes_into_a_folder_for_the_month_summarized(tmp_path):
     relative = write_note(TEMPLATE, data(), tmp_path)
-    assert str(relative) == "youtube/raft-consensus-1-dQw4w9WgXcQ.md"
+    assert str(relative) == "youtube/2026-11/raft-consensus-1-dQw4w9WgXcQ.md"
     assert (tmp_path / relative).read_text().startswith("---\ntitle:")
-    assert not list((tmp_path / "youtube").glob(".*.tmp"))
+    assert not list((tmp_path / "youtube" / "2026-11").glob(".*.tmp"))
+
+
+def test_a_new_month_gets_a_new_folder(tmp_path):
+    assert str(write_note(TEMPLATE, data(summarized="2026-12-01"), tmp_path)).startswith("youtube/2026-12/")
 
 
 def test_never_overwrites_an_existing_note(tmp_path):

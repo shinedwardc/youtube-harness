@@ -22,8 +22,10 @@ def slugify(title: str) -> str:
 
 
 def note_path(data: dict) -> Path:
+    # One folder per month summarized ("2026-11"), so notes never have to move later.
+    month = data["summarized"][:7]
     # The ID keeps two videos with the same title from sharing a file.
-    return Path(NOTES_FOLDER) / f"{slugify(data['title'])}-{data['video_id']}.md"
+    return Path(NOTES_FOLDER) / month / f"{slugify(data['title'])}-{data['video_id']}.md"
 
 
 def render_note(template: str, data: dict) -> str:
