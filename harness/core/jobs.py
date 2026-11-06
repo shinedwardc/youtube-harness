@@ -53,11 +53,12 @@ def run(job: Job, *, store: Store, plugin: Plugin, llms: Sequence[LLM], vault_di
         note_path = plugin.write(data, vault_dir)
         store.finish(job, str(note_path), data)
         log.info("Wrote %s", note_path)
+    # `outcome` marks how the job ended, so a caller that reports that itself (the CLI) can skip these.
     except Unprocessable as error:
-        log.warning("%s %s: %s", plugin.name, job.item_id, error)
+        log.warning("%s %s: %s", plugin.name, job.item_id, error, extra={"outcome": True})
         store.set_status(job.id, error.status, error=str(error))
     except Exception as error:
-        log.exception("Job %d failed", job.id)
+        log.exception("Job %d failed", job.id, extra={"outcome": True})
         store.set_status(job.id, "failed", error=f"{type(error).__name__}: {error}")
     return store.get_job(job.id)
 
