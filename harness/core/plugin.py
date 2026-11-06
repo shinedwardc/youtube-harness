@@ -33,3 +33,7 @@ class Plugin(Protocol):
     def write(self, data: dict, vault_dir: Path) -> Path:
         """Save the note and return its path relative to vault_dir."""
         ...
+
+    def source_text(self, source: Any) -> str:
+        """The full text behind the summary, stored for search and Q&A."""
+        ...

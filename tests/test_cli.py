@@ -127,6 +127,38 @@ def test_ctrl_c_exits_cleanly_and_the_link_can_be_sent_again(use_harness, plugin
     assert cli.main([URL]) == cli.EXIT_DONE
 
 
+def test_backfill_stores_transcripts_and_prints_nothing_on_stdout(use_harness, plugin, store, capsys):
+    use_harness(plugin)
+    job = store.claim(store.create_job("youtube", "dQw4w9WgXcQ", URL).id)
+    store.finish(job, "youtube/note.md", {"title": "Old video"})
+
+    assert cli.main(["--backfill-transcripts"]) == cli.EXIT_DONE
+
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "✓ Stored 1 transcript(s)" in err
+    assert store.get_source_text("youtube", "dQw4w9WgXcQ")
+
+
+def test_backfill_exits_1_when_a_video_fails(use_harness, store, capsys):
+    use_harness(YouTubePlugin(fetcher=lambda video_id: (_ for _ in ()).throw(RuntimeError("gone"))))
+    job = store.claim(store.create_job("youtube", "dQw4w9WgXcQ", URL).id)
+    store.finish(job, "youtube/note.md", {"title": "Old video"})
+
+    assert cli.main(["--backfill-transcripts"]) == cli.EXIT_FAILED
+
+    err = capsys.readouterr().err
+    assert "gone" in err
+    assert "1 failed" in err
+
+
+@pytest.mark.parametrize("argv", [[], [URL, "--backfill-transcripts"]])
+def test_needs_exactly_one_of_a_link_or_the_backfill(argv, capsys):
+    with pytest.raises(SystemExit):
+        cli.main(argv)
+    assert "either a link or --backfill-transcripts" in capsys.readouterr().err
+
+
 def test_invalid_link_exits_1(use_harness, plugin, capsys):
     use_harness(plugin)
 

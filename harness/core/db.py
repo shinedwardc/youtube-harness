@@ -37,7 +37,19 @@ CREATE TABLE IF NOT EXISTS summaries (
     created_at  TEXT NOT NULL,
     PRIMARY KEY (plugin, item_id)
 );
+
+-- The full text each summary was made from, for search and Q&A. Kept out of `summaries`
+-- because it is large and GET /jobs reads every summary on each poll.
+CREATE TABLE IF NOT EXISTS source_texts (
+    plugin      TEXT NOT NULL,
+    item_id     TEXT NOT NULL,
+    text        TEXT NOT NULL,
+    fetched_at  TEXT NOT NULL,
+    PRIMARY KEY (plugin, item_id)
+);
 """
+
+_SAVE_SOURCE_TEXT = "INSERT OR REPLACE INTO source_texts (plugin, item_id, text, fetched_at) VALUES (?, ?, ?, ?)"
 
 
 @dataclass(frozen=True)
@@ -110,6 +122,30 @@ class Store:
             for row in rows
         }
 
+    # --- source texts ---
+
+    def get_source_text(self, plugin: str, item_id: str) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT text FROM source_texts WHERE plugin = ? AND item_id = ?", (plugin, item_id)
+            ).fetchone()
+        return row["text"] if row else None
+
+    def save_source_text(self, plugin: str, item_id: str, text: str) -> None:
+        with self._connect() as conn:
+            conn.execute(_SAVE_SOURCE_TEXT, (plugin, item_id, text, _now()))
+
+    def summaries_without_source_text(self) -> list[tuple[str, str]]:
+        """The (plugin, item ID) of every summary whose source text isn't stored, oldest first."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT plugin, item_id FROM summaries"
+                " WHERE NOT EXISTS (SELECT 1 FROM source_texts"
+                " WHERE source_texts.plugin = summaries.plugin AND source_texts.item_id = summaries.item_id)"
+                " ORDER BY created_at"
+            ).fetchall()
+        return [(row["plugin"], row["item_id"]) for row in rows]
+
     # --- jobs ---
 
     def create_job(self, plugin: str, item_id: str, raw_input: str) -> Job:
@@ -169,8 +205,10 @@ class Store:
                 (status, error, _now(), job_id),
             )
 
-    def finish(self, job: Job, note_path: str, data: dict | None = None) -> None:
-        """Mark the job done and, when there is new data, cache it, in one transaction."""
+    def finish(
+        self, job: Job, note_path: str, data: dict | None = None, *, source_text: str | None = None
+    ) -> None:
+        """Mark the job done and store any new summary and source text, in one transaction."""
         now = _now()
         with self._connect() as conn:
             if data is not None:
@@ -179,6 +217,8 @@ class Store:
                     " VALUES (?, ?, ?, ?, ?)",
                     (job.plugin, job.item_id, note_path, json.dumps(data, ensure_ascii=False), now),
                 )
+            if source_text is not None:
+                conn.execute(_SAVE_SOURCE_TEXT, (job.plugin, job.item_id, source_text, now))
             conn.execute(
                 "UPDATE jobs SET status = 'done', error = NULL, note_path = ?, updated_at = ? WHERE id = ?",
                 (note_path, now, job.id),

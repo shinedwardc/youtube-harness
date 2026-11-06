@@ -12,7 +12,7 @@ import time
 from dotenv import load_dotenv
 
 from .bootstrap import build
-from .core.jobs import STALE_AFTER, run, submit, wait
+from .core.jobs import STALE_AFTER, backfill_source_texts, run, submit, wait
 from .core.llm import ConfigError
 
 EXIT_DONE = 0
@@ -84,9 +84,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="yt-sum", description="Summarize a YouTube video into a note in your Obsidian vault."
     )
-    parser.add_argument("url", help="A YouTube link or an 11-character video ID")
+    parser.add_argument("url", nargs="?", help="A YouTube link or an 11-character video ID")
+    parser.add_argument(
+        "--backfill-transcripts",
+        action="store_true",
+        help="Instead of summarizing, fetch the transcripts of saved videos that don't have one stored",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="Show debug logs, including yt-dlp's")
     args = parser.parse_args(argv)
+    if bool(args.url) == args.backfill_transcripts:
+        parser.error("give either a link or --backfill-transcripts")
 
     paint = setup_logging(args.verbose)
 
@@ -100,6 +107,18 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as error:
         say("✗", RED, str(error))
         return EXIT_FAILED
+
+    if args.backfill_transcripts:
+        try:
+            kept, failed = backfill_source_texts(harness.store, harness.plugins)
+        except KeyboardInterrupt:
+            say("✗", RED, paint("Interrupted; run it again to fetch the rest", RED))
+            return EXIT_INTERRUPTED
+        if failed:
+            say("✗", RED, paint(f"Stored {kept} transcript(s); {failed} failed. Run it again to retry them.", RED))
+            return EXIT_FAILED
+        say("✓", GREEN, paint(f"Stored {kept} transcript(s)", GREEN))
+        return EXIT_DONE
 
     plugin = harness.plugins["youtube"]
     vault_dir = harness.settings.vault_dir

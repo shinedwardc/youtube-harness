@@ -34,7 +34,7 @@ class YouTubePlugin:
         # Tests pass a fake fetcher here so they never call YouTube.
         self.fetcher = fetcher
 
-    # The four methods below are what harness.core.jobs calls, in this order.
+    # The five methods below are what harness.core.jobs calls, in this order.
 
     def parse(self, raw: str) -> str:
         # URL -> video ID; raises ValueError for anything that isn't a YouTube link.
@@ -64,3 +64,7 @@ class YouTubePlugin:
     def write(self, data: dict, vault_dir: Path) -> Path:
         # Render the note into vault/youtube/ and return its path relative to the vault.
         return write_note(self.template, data, vault_dir)
+
+    def source_text(self, source: Video) -> str:
+        # The cleaned transcript, in full, with its [mm:ss] marker about once a minute.
+        return source.transcript

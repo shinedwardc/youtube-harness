@@ -54,7 +54,7 @@ def run(job: Job, *, store: Store, plugin: Plugin, llms: Sequence[LLM], vault_di
 
         store.set_status(job.id, "writing")
         note_path = plugin.write(data, vault_dir)
-        store.finish(job, str(note_path), data)
+        store.finish(job, str(note_path), data, source_text=plugin.source_text(source))
         log.info("Wrote %s", note_path)
     # `outcome` marks how the job ended, so a caller that reports that itself (the CLI) can skip these.
     except Unprocessable as error:
@@ -81,6 +81,25 @@ def _summarize(plugin: Plugin, source, llms: Sequence[LLM]) -> dict:
             log.warning("%s", error)
             errors.append(str(error))
     raise LLMUnavailable("No provider could answer: " + "; ".join(errors))
+
+
+def backfill_source_texts(store: Store, plugins: Mapping[str, Plugin]) -> tuple[int, int]:
+    """Fetch the source text of summaries that lack one, and return how many were (kept, failed).
+
+    Makes no LLM calls and touches no notes. Running it again retries only what is still missing.
+    """
+    kept = failed = 0
+    for name, item_id in store.summaries_without_source_text():
+        log.info("Fetching %s %s", name, item_id)
+        try:
+            plugin = plugins[name]
+            store.save_source_text(name, item_id, plugin.source_text(plugin.fetch(item_id)))
+            kept += 1
+        # One deleted video shouldn't stop the rest.
+        except Exception as error:
+            log.warning("%s %s: %s", name, item_id, error)
+            failed += 1
+    return kept, failed
 
 
 def wait(store: Store, job_id: int, *, poll_interval: float = 1.0) -> Job:

@@ -5,10 +5,10 @@ from datetime import timedelta
 
 import pytest
 
-from harness.core.jobs import Worker, run, submit, wait
+from harness.core.jobs import Worker, backfill_source_texts, run, submit, wait
 from harness.core.plugin import Unprocessable
 from harness.plugins.youtube import YouTubePlugin
-from tests.conftest import FakeLLM, abandon
+from tests.conftest import FakeLLM, abandon, make_video
 
 URL = "https://youtu.be/dQw4w9WgXcQ"
 
@@ -27,6 +27,51 @@ def test_a_new_link_goes_through_to_a_note(store, plugin, vault):
     data = store.get_summary("youtube", "dQw4w9WgXcQ").data
     assert data["model"] == "fake:model"
     assert data["category"] == "Education"
+
+
+def test_a_finished_job_keeps_the_whole_transcript_apart_from_the_summary(store, vault):
+    transcript = "\n\n".join(f"[{minute:02d}:00] Words spoken in minute {minute}." for minute in range(600))
+    plugin = YouTubePlugin(fetcher=lambda video_id: make_video(video_id, transcript=transcript))
+
+    run_submitted(store, plugin, vault, [FakeLLM()])
+
+    assert store.get_source_text("youtube", "dQw4w9WgXcQ") == transcript
+    # GET /jobs reads every summary on each poll, so the transcript must stay out of them.
+    assert transcript not in str(store.get_summary("youtube", "dQw4w9WgXcQ").data)
+
+
+def seed_summary_without_transcript(store, video_id):
+    """A video summarized before transcripts were kept."""
+    job = store.claim(store.create_job("youtube", video_id, video_id).id)
+    store.finish(job, f"youtube/{video_id}.md", {"title": video_id})
+
+
+def test_backfill_fetches_only_what_is_missing_without_calling_an_llm(store, plugin, vault, fetched):
+    run_submitted(store, plugin, vault, [FakeLLM()])
+    fetched.clear()
+    seed_summary_without_transcript(store, "aaaaaaaaaaa")
+
+    assert backfill_source_texts(store, {"youtube": plugin}) == (1, 0)
+
+    assert fetched == ["aaaaaaaaaaa"]
+    assert store.get_source_text("youtube", "aaaaaaaaaaa") == make_video().transcript
+    assert store.summaries_without_source_text() == []
+
+
+def test_backfill_survives_a_failure_and_a_second_run_retries_it(store, plugin):
+    seed_summary_without_transcript(store, "aaaaaaaaaaa")
+    seed_summary_without_transcript(store, "bbbbbbbbbbb")
+
+    def fetcher(video_id):
+        if video_id == "aaaaaaaaaaa":
+            raise Unprocessable("failed", "Video unavailable")
+        return make_video(video_id)
+
+    assert backfill_source_texts(store, {"youtube": YouTubePlugin(fetcher=fetcher)}) == (1, 1)
+    assert store.summaries_without_source_text() == [("youtube", "aaaaaaaaaaa")]
+
+    assert backfill_source_texts(store, {"youtube": plugin}) == (1, 0)
+    assert store.summaries_without_source_text() == []
 
 
 def test_the_same_link_twice_comes_from_the_cache(store, plugin, vault, fetched):
