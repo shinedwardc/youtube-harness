@@ -16,8 +16,11 @@ SLUG_LENGTH = 60
 
 def slugify(title: str) -> str:
     """Lowercase, hyphenated, and safe on every OS Obsidian syncs to. Keeps Hangul and other letters."""
+    # Remove punctuation such as : " / ? #; \w keeps letters in any script, digits and _.
     slug = re.sub(r"[^\w\s-]", "", title.lower())
+    # Collapse runs of spaces, underscores and hyphens into one hyphen.
     slug = re.sub(r"[\s_-]+", "-", slug).strip("-")
+    # A title made only of punctuation leaves nothing, so fall back to "video".
     return slug[:SLUG_LENGTH].rstrip("-") or "video"
 
 
@@ -33,12 +36,15 @@ def render_note(template: str, data: dict) -> str:
         # A JSON string is a valid YAML scalar, so titles with ':' or '#' stay intact.
         return json.dumps(value, ensure_ascii=False)
 
+    # Each timestamp links to that second of the video; a time that can't be parsed stays plain text.
     timestamps = []
     for stamp in data["timestamps"]:
         seconds = parse_time(stamp["time"])
         time = f"[{stamp['time']}]({data['url']}&t={seconds}s)" if seconds is not None else stamp["time"]
         timestamps.append(f"- {time} {stamp['label']}")
 
+    # Fill each $placeholder in templates/note.md.
+    # Frontmatter values are quoted; the markdown body is inserted as-is.
     return Template(template).substitute(
         title=quoted(data["title"]),
         channel=quoted(data["channel"]),
@@ -68,9 +74,11 @@ def write_note(template: str, data: dict, vault_dir: Path) -> Path:
         log.warning("Keeping the existing note at %s", path)
         return relative
 
+    # Create vault/youtube/ on the first run.
     path.parent.mkdir(parents=True, exist_ok=True)
     # Write then rename, so a sync never picks up half a note.
     temporary = path.with_name(f".{path.name}.tmp")
     temporary.write_text(render_note(template, data), encoding="utf-8")
     temporary.replace(path)
+    # The relative path is what gets stored, so it still works if the vault moves.
     return relative
