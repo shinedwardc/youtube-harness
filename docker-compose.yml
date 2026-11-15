@@ -20,8 +20,9 @@ services:
       HARNESS_VAULT_DIR: /vault
       HARNESS_DB_PATH: /data/harness.db
     ports:
-      # The app has no login, so publish it to this machine only. Never bind it to a public address.
-      - "127.0.0.1:8000:8000"
+      # The app has no login, so by default it is published to this machine only.
+      # Set HARNESS_BIND and HARNESS_PORT in .env to change that. Never bind it to a public address.
+      - "${HARNESS_BIND:-127.0.0.1}:${HARNESS_PORT:-8000}:8000"
     volumes:
       # Compose reads HARNESS_VAULT_DIR from .env here, so this is the folder on the host.
       - "${HARNESS_VAULT_DIR:-./vault}:/vault"

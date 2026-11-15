@@ -27,7 +27,7 @@ Now that this exists - I am able to save YouTube videos but with summaries and n
   - `docker compose up -d --build`
   - Open http://localhost:8000
 - What success looks like: paste a link, press Add, and a note appears in about a minute
-- Warning: there is no login, so never expose the port publicly. Compose binds it to `127.0.0.1` for this reason
+- Warning: there is no login, so never expose the port publicly. Compose binds it to `127.0.0.1` for this reason. To open it to other devices on a network you trust, set `HARNESS_BIND` (and optionally `HARNESS_PORT`) in `.env`
 - Mention `HARNESS_VAULT_DIR` and `HARNESS_VAULT_NAME`, or "open in Obsidian" links can break
 
 ## Usage
