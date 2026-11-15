@@ -2,6 +2,8 @@
 name = "youtube-harness"
 version = "0.1.0"
 description = "Turns a YouTube link into a summary note in an Obsidian vault, and never summarizes the same video twice."
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.162.0",
